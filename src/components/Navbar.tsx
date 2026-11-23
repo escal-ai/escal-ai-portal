@@ -11,6 +11,8 @@ import {
   ChefHat,
   Crown,
   Wifi,
+  LogOut,
+  Store,
 } from "lucide-react";
 import { PortalRole, RestaurantBranding } from "../types/portal";
 import { chimeManager } from "../lib/sound-chime";
@@ -26,6 +28,9 @@ interface NavbarProps {
   onThemeToggle: () => void;
   activeOrdersCount: number;
   isLiveStream?: boolean;
+  availableRestaurants?: Array<{ restaurant_id: string; name: string }>;
+  onSwitchRestaurant?: (restaurantId: string) => void;
+  onLogout?: () => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -39,6 +44,9 @@ export const Navbar: React.FC<NavbarProps> = ({
   onThemeToggle,
   activeOrdersCount,
   isLiveStream = false,
+  availableRestaurants,
+  onSwitchRestaurant,
+  onLogout,
 }) => {
   const [audioUnlocked, setAudioUnlocked] = React.useState(false);
 
@@ -191,6 +199,38 @@ export const Navbar: React.FC<NavbarProps> = ({
               <Moon className="h-4 w-4 text-slate-600" />
             )}
           </button>
+
+          {/* Tenant Switcher (if multi-restaurant owner) */}
+          {availableRestaurants && availableRestaurants.length > 1 && onSwitchRestaurant && (
+            <div className="flex items-center gap-1.5 pl-1 border-l border-[var(--border-subtle)]">
+              <Store className="h-3.5 w-3.5 text-orange-600" />
+              <select
+                onChange={(e) => onSwitchRestaurant(e.target.value)}
+                defaultValue=""
+                className="px-2 py-1.5 rounded-lg text-xs font-bold bg-[var(--surface-muted)] text-[var(--text-primary)] border border-[var(--border-subtle)] focus:outline-none"
+              >
+                <option value="" disabled>
+                  {lang === "es" ? "Cambiar Sucursal" : "Switch Branch"}
+                </option>
+                {availableRestaurants.map((r) => (
+                  <option key={r.restaurant_id} value={r.restaurant_id}>
+                    {r.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          {/* Logout Button */}
+          {onLogout && (
+            <button
+              onClick={onLogout}
+              title={lang === "es" ? "Cerrar Sesión" : "Sign Out"}
+              className="p-2 rounded-lg text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30 border border-[var(--border-subtle)] transition-colors"
+            >
+              <LogOut className="h-4 w-4" />
+            </button>
+          )}
         </div>
       </div>
     </header>

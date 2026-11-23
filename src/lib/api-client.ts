@@ -4,6 +4,7 @@ import {
   MenuItemAvailability,
   OrderStatus,
   OrderTicket,
+  PortalRole,
   RestaurantBranding,
   RestaurantRoiMetrics,
 } from "../types/portal";
@@ -268,4 +269,113 @@ export function subscribeToKdsStream(
   return () => {
     eventSource.close();
   };
+}
+
+export async function fetchPublicTenants(): Promise<
+  Array<{ restaurant_id: string; name: string; city: string; phone_e164: string }>
+> {
+  try {
+    const res = await fetch(`${API_BASE_URL}/api/auth/tenants`, {
+      cache: "no-store",
+    });
+    if (!res.ok) return [];
+    const data = (await res.json()) as {
+      ok: boolean;
+      tenants: Array<{
+        restaurant_id: string;
+        name: string;
+        city: string;
+        phone_e164: string;
+      }>;
+    };
+    return data.tenants ?? [];
+  } catch {
+    return [];
+  }
+}
+
+export async function loginWithKitchenPin(
+  restaurantId: string,
+  pin: string
+): Promise<{
+  token: string;
+  role: PortalRole;
+  restaurant: { restaurant_id: string; name: string };
+  available_restaurants: Array<{ restaurant_id: string; name: string }>;
+}> {
+  const res = await fetch(`${API_BASE_URL}/api/auth/login/kitchen-pin`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ restaurant_id: restaurantId, pin }),
+  });
+  const data = (await res.json()) as {
+    ok: boolean;
+    error?: string;
+    token: string;
+    role: PortalRole;
+    restaurant: { restaurant_id: string; name: string };
+    available_restaurants: Array<{ restaurant_id: string; name: string }>;
+  };
+  if (!res.ok || !data.ok) {
+    throw new Error(data.error || "PIN de cocina inválido");
+  }
+  return data;
+}
+
+export async function loginWithCredentials(
+  email: string,
+  password: string,
+  restaurantId?: string
+): Promise<{
+  token: string;
+  role: PortalRole;
+  user_id?: string;
+  restaurant: { restaurant_id: string; name: string };
+  available_restaurants: Array<{ restaurant_id: string; name: string }>;
+}> {
+  const res = await fetch(`${API_BASE_URL}/api/auth/login/owner`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email, password, restaurant_id: restaurantId }),
+  });
+  const data = (await res.json()) as {
+    ok: boolean;
+    error?: string;
+    token: string;
+    role: PortalRole;
+    user_id?: string;
+    restaurant: { restaurant_id: string; name: string };
+    available_restaurants: Array<{ restaurant_id: string; name: string }>;
+  };
+  if (!res.ok || !data.ok) {
+    throw new Error(data.error || "Credenciales incorrectas");
+  }
+  return data;
+}
+
+export async function switchRestaurantSession(
+  token: string,
+  restaurantId: string
+): Promise<{
+  token: string;
+  restaurant: { restaurant_id: string; name: string };
+}> {
+  const res = await fetch(`${API_BASE_URL}/api/auth/switch-restaurant`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({ restaurant_id: restaurantId }),
+  });
+  const data = (await res.json()) as {
+    ok: boolean;
+    error?: string;
+    token: string;
+    restaurant: { restaurant_id: string; name: string };
+  };
+  if (!res.ok || !data.ok) {
+    throw new Error(data.error || "No se pudo cambiar de restaurante");
+  }
+  return data;
 }

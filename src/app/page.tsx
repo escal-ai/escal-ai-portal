@@ -5,6 +5,13 @@ import { Navbar } from "../components/Navbar";
 import { KdsBoard } from "../components/kds/KdsBoard";
 import { OwnerDashboard } from "../components/owner/OwnerDashboard";
 import { SupportCallLogs } from "../components/support/SupportCallLogs";
+import { LoginView } from "../components/auth/LoginView";
+import {
+  ActiveSession,
+  getStoredSession,
+  saveSession,
+  clearSession,
+} from "../lib/auth-session";
 import {
   PortalRole,
   OrderTicket,
@@ -26,11 +33,15 @@ import {
   fetchBranding,
   updateBranding,
   subscribeToKdsStream,
+  switchRestaurantSession,
 } from "../lib/api-client";
 import { DEFAULT_RESTAURANT_ID, DEMO_TOKENS } from "../lib/constants";
 import { chimeManager } from "../lib/sound-chime";
 
 export default function PortalHomePage() {
+  const [session, setSession] = useState<ActiveSession | null>(null);
+  const [isAuthChecking, setIsAuthChecking] = useState<boolean>(true);
+
   const [role, setRole] = useState<PortalRole>("kitchen");
   const [lang, setLang] = useState<"es" | "en">("es");
   const [isDark, setIsDark] = useState<boolean>(false);
@@ -47,10 +58,22 @@ export default function PortalHomePage() {
   const [isLiveStream, setIsLiveStream] = useState<boolean>(false);
 
   const previousOrdersCountRef = useRef<number>(0);
-  const currentToken = DEMO_TOKENS[role];
 
-  // 1. Initial Language detection & Dark mode setup
+  // Active Session or Demo Fallback
+  const currentToken = session?.token || DEMO_TOKENS[role];
+  const currentRestaurantId = session?.restaurant_id || DEFAULT_RESTAURANT_ID;
+  const currentRestaurantName =
+    session?.restaurant_name || "Taquería y Birriería La Estrella";
+
+  // 1. Initial Session & Language detection & Dark mode setup
   useEffect(() => {
+    const stored = getStoredSession();
+    if (stored) {
+      setSession(stored);
+      setRole(stored.role);
+    }
+    setIsAuthChecking(false);
+
     if (typeof window !== "undefined") {
       const browserLang = navigator.language.toLowerCase();
       if (browserLang.startsWith("en")) {
@@ -102,7 +125,7 @@ export default function PortalHomePage() {
     try {
       if (role === "kitchen" || role === "owner") {
         const fetchedOrders = await fetchOrders(
-          DEFAULT_RESTAURANT_ID,
+          currentRestaurantId,
           currentToken
         );
 
@@ -121,7 +144,7 @@ export default function PortalHomePage() {
         setOrders(fetchedOrders);
 
         const menuData = await fetchMenu(
-          DEFAULT_RESTAURANT_ID,
+          currentRestaurantId,
           currentToken
         );
         setMenuItems(menuData.items || []);
@@ -130,13 +153,13 @@ export default function PortalHomePage() {
 
       if (role === "owner") {
         const fetchedMetrics = await fetchRoiMetrics(
-          DEFAULT_RESTAURANT_ID,
+          currentRestaurantId,
           currentToken
         );
         setMetrics(fetchedMetrics);
 
         const fetchedBranding = await fetchBranding(
-          DEFAULT_RESTAURANT_ID,
+          currentRestaurantId,
           currentToken
         );
         setBranding(fetchedBranding);
@@ -144,7 +167,7 @@ export default function PortalHomePage() {
 
       if (role === "support_latam") {
         const fetchedCalls = await fetchCallLogs(
-          DEFAULT_RESTAURANT_ID,
+          currentRestaurantId,
           currentToken,
           50
         );
@@ -167,7 +190,7 @@ export default function PortalHomePage() {
     let unsubscribeStream: (() => void) | null = null;
     try {
       unsubscribeStream = subscribeToKdsStream(
-        DEFAULT_RESTAURANT_ID,
+        currentRestaurantId,
         currentToken,
         {
           onConnected: () => {
@@ -222,9 +245,45 @@ export default function PortalHomePage() {
       clearInterval(interval);
       setIsLiveStream(false);
     };
-  }, [role, currentToken]);
+  }, [role, currentToken, currentRestaurantId]);
 
   // Handlers
+  const handleLoginSuccess = (newSession: ActiveSession) => {
+    saveSession(newSession);
+    setSession(newSession);
+    setRole(newSession.role);
+    setOrders([]);
+    setLoading(true);
+  };
+
+  const handleLogout = () => {
+    clearSession();
+    setSession(null);
+    setOrders([]);
+  };
+
+  const handleSwitchRestaurant = async (targetRestaurantId: string) => {
+    if (!session) return;
+    try {
+      const switched = await switchRestaurantSession(
+        session.token,
+        targetRestaurantId
+      );
+      const updated: ActiveSession = {
+        ...session,
+        token: switched.token,
+        restaurant_id: switched.restaurant.restaurant_id,
+        restaurant_name: switched.restaurant.name,
+      };
+      saveSession(updated);
+      setSession(updated);
+      setOrders([]);
+      setLoading(true);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    }
+  };
+
   const handleUpdateStatus = async (
     ticketId: string,
     nextStatus: OrderStatus
@@ -236,7 +295,7 @@ export default function PortalHomePage() {
 
     try {
       await updateOrderStatus(
-        DEFAULT_RESTAURANT_ID,
+        currentRestaurantId,
         ticketId,
         nextStatus,
         currentToken
@@ -253,7 +312,7 @@ export default function PortalHomePage() {
       prev.map((i) => (i.id === itemId ? { ...i, available } : i))
     );
     await setItemAvailability(
-      DEFAULT_RESTAURANT_ID,
+      currentRestaurantId,
       itemId,
       available,
       currentToken
@@ -281,7 +340,7 @@ export default function PortalHomePage() {
       }))
     );
     await setModifierOptionAvailability(
-      DEFAULT_RESTAURANT_ID,
+      currentRestaurantId,
       groupId,
       optionId,
       available,
@@ -291,12 +350,12 @@ export default function PortalHomePage() {
 
   const handleUpdatePrepTime = async (minutes: number) => {
     setDefaultPrepMinutes(minutes);
-    await updatePrepTime(DEFAULT_RESTAURANT_ID, minutes, currentToken);
+    await updatePrepTime(currentRestaurantId, minutes, currentToken);
   };
 
   const handleSaveBranding = async (newBranding: Partial<RestaurantBranding>) => {
     const updated = await updateBranding(
-      DEFAULT_RESTAURANT_ID,
+      currentRestaurantId,
       newBranding,
       currentToken
     );
@@ -307,10 +366,21 @@ export default function PortalHomePage() {
     (o) => o.status === "confirmed" || o.status === "in_kitchen"
   ).length;
 
+  // Show login screen if unauthenticated
+  if (!session && !isAuthChecking) {
+    return (
+      <LoginView
+        onLoginSuccess={handleLoginSuccess}
+        lang={lang}
+        onLangChange={setLang}
+      />
+    );
+  }
+
   return (
     <div className="min-h-screen flex flex-col">
       <Navbar
-        restaurantName="Taquería y Birriería La Estrella"
+        restaurantName={currentRestaurantName}
         branding={branding}
         currentRole={role}
         onRoleChange={setRole}
@@ -320,6 +390,9 @@ export default function PortalHomePage() {
         onThemeToggle={() => setIsDark((d) => !d)}
         activeOrdersCount={activeOrdersCount}
         isLiveStream={isLiveStream}
+        availableRestaurants={session?.available_restaurants}
+        onSwitchRestaurant={handleSwitchRestaurant}
+        onLogout={handleLogout}
       />
 
       <main className="flex-1 pb-16">
