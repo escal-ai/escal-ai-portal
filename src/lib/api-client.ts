@@ -1,0 +1,198 @@
+import { API_BASE_URL } from "./constants";
+import {
+  CallLogEntry,
+  MenuItemAvailability,
+  OrderStatus,
+  OrderTicket,
+  RestaurantBranding,
+  RestaurantRoiMetrics,
+} from "../types/portal";
+
+export async function fetchOrders(
+  restaurantId: string,
+  token: string,
+  status?: OrderStatus
+): Promise<OrderTicket[]> {
+  const url = new URL(
+    `${API_BASE_URL}/api/restaurants/${restaurantId}/orders`
+  );
+  if (status) url.searchParams.set("status", status);
+
+  const res = await fetch(url.toString(), {
+    headers: { Authorization: `Bearer ${token}` },
+    cache: "no-store",
+  });
+  if (!res.ok) throw new Error(`HTTP ${res.status}: Failed to fetch orders`);
+  const data = (await res.json()) as { ok: boolean; orders: OrderTicket[] };
+  return data.orders ?? [];
+}
+
+export async function updateOrderStatus(
+  restaurantId: string,
+  ticketId: string,
+  status: OrderStatus,
+  token: string
+): Promise<OrderTicket> {
+  const res = await fetch(
+    `${API_BASE_URL}/api/restaurants/${restaurantId}/orders/${ticketId}/status`,
+    {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ status }),
+    }
+  );
+  if (!res.ok) {
+    const errData = (await res.json().catch(() => ({}))) as { error?: string };
+    throw new Error(errData.error || `HTTP ${res.status}: Failed to update status`);
+  }
+  const data = (await res.json()) as { ok: boolean; order: OrderTicket };
+  return data.order;
+}
+
+export async function fetchMenu(
+  restaurantId: string,
+  token: string
+): Promise<{ default_prep_minutes: number; items: MenuItemAvailability[] }> {
+  const res = await fetch(
+    `${API_BASE_URL}/api/restaurants/${restaurantId}/menu`,
+    {
+      headers: { Authorization: `Bearer ${token}` },
+      cache: "no-store",
+    }
+  );
+  if (!res.ok) throw new Error(`HTTP ${res.status}: Failed to fetch menu`);
+  return res.json();
+}
+
+export async function setItemAvailability(
+  restaurantId: string,
+  itemId: string,
+  available: boolean,
+  token: string
+): Promise<void> {
+  const res = await fetch(
+    `${API_BASE_URL}/api/restaurants/${restaurantId}/menu/items/${itemId}/availability`,
+    {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ available }),
+    }
+  );
+  if (!res.ok) throw new Error(`HTTP ${res.status}: Failed to toggle item availability`);
+}
+
+export async function setModifierOptionAvailability(
+  restaurantId: string,
+  groupId: string,
+  optionId: string,
+  available: boolean,
+  token: string
+): Promise<void> {
+  const res = await fetch(
+    `${API_BASE_URL}/api/restaurants/${restaurantId}/menu/groups/${groupId}/options/${optionId}/availability`,
+    {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ available }),
+    }
+  );
+  if (!res.ok) throw new Error(`HTTP ${res.status}: Failed to toggle modifier availability`);
+}
+
+export async function updatePrepTime(
+  restaurantId: string,
+  prepMinutes: number,
+  token: string
+): Promise<void> {
+  const res = await fetch(
+    `${API_BASE_URL}/api/restaurants/${restaurantId}/operations/prep-time`,
+    {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ default_prep_minutes: prepMinutes }),
+    }
+  );
+  if (!res.ok) throw new Error(`HTTP ${res.status}: Failed to update prep time`);
+}
+
+export async function fetchRoiMetrics(
+  restaurantId: string,
+  token: string
+): Promise<RestaurantRoiMetrics> {
+  const res = await fetch(
+    `${API_BASE_URL}/api/restaurants/${restaurantId}/metrics/roi`,
+    {
+      headers: { Authorization: `Bearer ${token}` },
+      cache: "no-store",
+    }
+  );
+  if (!res.ok) throw new Error(`HTTP ${res.status}: Failed to fetch ROI metrics`);
+  const data = (await res.json()) as { ok: boolean; metrics: RestaurantRoiMetrics };
+  return data.metrics;
+}
+
+export async function fetchCallLogs(
+  restaurantId: string,
+  token: string,
+  limit = 50
+): Promise<CallLogEntry[]> {
+  const res = await fetch(
+    `${API_BASE_URL}/api/restaurants/${restaurantId}/calls?limit=${limit}`,
+    {
+      headers: { Authorization: `Bearer ${token}` },
+      cache: "no-store",
+    }
+  );
+  if (!res.ok) throw new Error(`HTTP ${res.status}: Failed to fetch calls`);
+  const data = (await res.json()) as { ok: boolean; calls: CallLogEntry[] };
+  return data.calls ?? [];
+}
+
+export async function fetchBranding(
+  restaurantId: string,
+  token: string
+): Promise<RestaurantBranding> {
+  const res = await fetch(
+    `${API_BASE_URL}/api/restaurants/${restaurantId}/branding`,
+    {
+      headers: { Authorization: `Bearer ${token}` },
+      cache: "no-store",
+    }
+  );
+  if (!res.ok) throw new Error(`HTTP ${res.status}: Failed to fetch branding`);
+  const data = (await res.json()) as { ok: boolean; branding: RestaurantBranding };
+  return data.branding;
+}
+
+export async function updateBranding(
+  restaurantId: string,
+  branding: Partial<RestaurantBranding>,
+  token: string
+): Promise<RestaurantBranding> {
+  const res = await fetch(
+    `${API_BASE_URL}/api/restaurants/${restaurantId}/branding`,
+    {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify(branding),
+    }
+  );
+  if (!res.ok) throw new Error(`HTTP ${res.status}: Failed to update branding`);
+  const data = (await res.json()) as { ok: boolean; branding: RestaurantBranding };
+  return data.branding;
+}
