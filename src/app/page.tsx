@@ -25,6 +25,7 @@ import {
   fetchCallLogs,
   fetchBranding,
   updateBranding,
+  subscribeToKdsStream,
 } from "../lib/api-client";
 import { DEFAULT_RESTAURANT_ID, DEMO_TOKENS } from "../lib/constants";
 import { chimeManager } from "../lib/sound-chime";
@@ -43,6 +44,7 @@ export default function PortalHomePage() {
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isLiveStream, setIsLiveStream] = useState<boolean>(false);
 
   const previousOrdersCountRef = useRef<number>(0);
   const currentToken = DEMO_TOKENS[role];
@@ -161,12 +163,66 @@ export default function PortalHomePage() {
     setLoading(true);
     void refreshData();
 
+    // 4. Real-time Server-Sent Events (SSE) Stream
+    let unsubscribeStream: (() => void) | null = null;
+    try {
+      unsubscribeStream = subscribeToKdsStream(
+        DEFAULT_RESTAURANT_ID,
+        currentToken,
+        {
+          onConnected: () => {
+            setIsLiveStream(true);
+            setError(null);
+          },
+          onInitialSnapshot: (initialOrders) => {
+            setOrders(initialOrders);
+            setLoading(false);
+            setError(null);
+          },
+          onOrderCreated: (newOrder) => {
+            setOrders((prev) => {
+              const exists = prev.some((o) => o.ticket_id === newOrder.ticket_id);
+              if (exists) return prev;
+              chimeManager.playNewOrderChime();
+              return [newOrder, ...prev];
+            });
+            setError(null);
+          },
+          onOrderUpdated: (updatedOrder) => {
+            setOrders((prev) =>
+              prev.map((o) =>
+                o.ticket_id === updatedOrder.ticket_id ? updatedOrder : o
+              )
+            );
+          },
+          onMenuUpdated: (unavailableIds) => {
+            setMenuItems((prev) =>
+              prev.map((item) => ({
+                ...item,
+                available: !unavailableIds.includes(item.id),
+              }))
+            );
+          },
+          onError: () => {
+            setIsLiveStream(false);
+          },
+        }
+      );
+    } catch {
+      setIsLiveStream(false);
+    }
+
+    // Safety fallback polling loop (every 20s if SSE reconnects or for ROI metrics refresh)
     const interval = setInterval(() => {
       void refreshData();
-    }, 6000);
+    }, 20000);
 
-    return () => clearInterval(interval);
-  }, [role]);
+    return () => {
+      if (unsubscribeStream) unsubscribeStream();
+      clearInterval(interval);
+      setIsLiveStream(false);
+    };
+  }, [role, currentToken]);
 
   // Handlers
   const handleUpdateStatus = async (
@@ -263,6 +319,7 @@ export default function PortalHomePage() {
         isDark={isDark}
         onThemeToggle={() => setIsDark((d) => !d)}
         activeOrdersCount={activeOrdersCount}
+        isLiveStream={isLiveStream}
       />
 
       <main className="flex-1 pb-16">

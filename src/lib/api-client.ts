@@ -196,3 +196,76 @@ export async function updateBranding(
   const data = (await res.json()) as { ok: boolean; branding: RestaurantBranding };
   return data.branding;
 }
+
+export interface KdsStreamHandlers {
+  onInitialSnapshot?: (orders: OrderTicket[]) => void;
+  onOrderCreated?: (order: OrderTicket) => void;
+  onOrderUpdated?: (order: OrderTicket) => void;
+  onMenuUpdated?: (unavailableItems: string[]) => void;
+  onError?: (err: Event) => void;
+  onConnected?: () => void;
+}
+
+/**
+ * Subscribes to real-time KDS Server-Sent Events (SSE) for instant order delivery without polling
+ */
+export function subscribeToKdsStream(
+  restaurantId: string,
+  token: string,
+  handlers: KdsStreamHandlers
+): () => void {
+  if (typeof window === "undefined" || !("EventSource" in window)) {
+    return () => {};
+  }
+
+  const streamUrl = `${API_BASE_URL}/api/restaurants/${restaurantId}/kds/stream?token=${encodeURIComponent(token)}`;
+  const eventSource = new EventSource(streamUrl);
+
+  eventSource.onopen = () => {
+    handlers.onConnected?.();
+  };
+
+  eventSource.addEventListener("initial_snapshot", (e) => {
+    try {
+      const data = JSON.parse((e as MessageEvent).data) as { orders: OrderTicket[] };
+      handlers.onInitialSnapshot?.(data.orders || []);
+    } catch {
+      // Ignored
+    }
+  });
+
+  eventSource.addEventListener("order_created", (e) => {
+    try {
+      const data = JSON.parse((e as MessageEvent).data) as { order: OrderTicket };
+      if (data.order) handlers.onOrderCreated?.(data.order);
+    } catch {
+      // Ignored
+    }
+  });
+
+  eventSource.addEventListener("order_updated", (e) => {
+    try {
+      const data = JSON.parse((e as MessageEvent).data) as { order: OrderTicket };
+      if (data.order) handlers.onOrderUpdated?.(data.order);
+    } catch {
+      // Ignored
+    }
+  });
+
+  eventSource.addEventListener("menu_updated", (e) => {
+    try {
+      const data = JSON.parse((e as MessageEvent).data) as { unavailable_items: string[] };
+      handlers.onMenuUpdated?.(data.unavailable_items || []);
+    } catch {
+      // Ignored
+    }
+  });
+
+  eventSource.onerror = (err) => {
+    handlers.onError?.(err);
+  };
+
+  return () => {
+    eventSource.close();
+  };
+}

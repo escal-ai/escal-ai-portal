@@ -25,6 +25,7 @@ interface NavbarProps {
   isDark: boolean;
   onThemeToggle: () => void;
   activeOrdersCount: number;
+  isLiveStream?: boolean;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -37,6 +38,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   isDark,
   onThemeToggle,
   activeOrdersCount,
+  isLiveStream = false,
 }) => {
   const [audioUnlocked, setAudioUnlocked] = React.useState(false);
 
@@ -72,10 +74,17 @@ export const Navbar: React.FC<NavbarProps> = ({
               <span className="font-bold text-lg tracking-tight text-[var(--text-primary)]">
                 {restaurantName}
               </span>
-              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">
-                <Wifi className="h-3 w-3 text-emerald-600 animate-pulse" />
-                {lang === "es" ? "En Línea" : "Live"}
-              </span>
+              {isLiveStream ? (
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">
+                  <Wifi className="h-3 w-3 text-emerald-600 animate-pulse" />
+                  {lang === "es" ? "En Vivo (SSE)" : "Live (SSE)"}
+                </span>
+              ) : (
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-700 border border-slate-300">
+                  <Wifi className="h-3 w-3 text-slate-500" />
+                  {lang === "es" ? "En Línea" : "Online"}
+                </span>
+              )}
             </div>
             <span className="text-xs text-[var(--text-muted)] font-medium">
               Escal-AI Cloud Portal
