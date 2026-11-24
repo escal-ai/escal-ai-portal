@@ -16,14 +16,18 @@ import {
   AlertTriangle,
   PhoneForwarded,
   Sparkles,
+  CreditCard,
 } from "lucide-react";
 import {
   RestaurantRoiMetrics,
   MenuItemAvailability,
   RestaurantBranding,
   FailoverConfig,
+  StripePrepayConfig,
+  OrderTicket,
 } from "../../types/portal";
 import { OnboardingWizardModal } from "../admin/OnboardingWizardModal";
+import { StripePrepayPanel } from "./StripePrepayPanel";
 
 interface OwnerDashboardProps {
   metrics: RestaurantRoiMetrics | null;
@@ -39,6 +43,14 @@ interface OwnerDashboardProps {
     failover_mode: "forward_to_phone" | "contingency_message";
     failover_phone_e164: string | null;
   }) => Promise<void>;
+  stripeConfig?: StripePrepayConfig | null;
+  orders?: OrderTicket[];
+  onSaveStripeConfig?: (config: {
+    prepay_enabled: boolean;
+    prepay_threshold_cents: number;
+    prepay_expiry_minutes: number;
+  }) => Promise<void>;
+  onConnectStripe?: () => Promise<void>;
   lang: "es" | "en";
   token?: string;
   onRestaurantCreated?: (id: string, name: string) => void;
@@ -55,12 +67,16 @@ export const OwnerDashboard: React.FC<OwnerDashboardProps> = ({
   onSaveBranding,
   failoverConfig,
   onSaveFailover,
+  stripeConfig,
+  orders = [],
+  onSaveStripeConfig,
+  onConnectStripe,
   lang,
   token,
   onRestaurantCreated,
 }) => {
   const [activeTab, setActiveTab] = useState<
-    "roi" | "operations" | "branding" | "failover"
+    "roi" | "operations" | "branding" | "failover" | "payments"
   >("roi");
   const [isOnboardingOpen, setIsOnboardingOpen] = useState(false);
   const [prepTimeInput, setPrepTimeInput] = useState(defaultPrepMinutes);
@@ -193,6 +209,18 @@ export const OwnerDashboard: React.FC<OwnerDashboardProps> = ({
           >
             <ShieldCheck className="h-4 w-4" />
             {lang === "es" ? "Respaldo Telefónico" : "Phone Failover"}
+          </button>
+
+          <button
+            onClick={() => setActiveTab("payments")}
+            className={`pb-3 px-4 text-sm font-bold border-b-2 transition-all flex items-center gap-1.5 ${
+              activeTab === "payments"
+                ? "border-[var(--brand-accent)] text-[var(--text-primary)]"
+                : "border-transparent text-[var(--text-muted)] hover:text-[var(--text-secondary)]"
+            }`}
+          >
+            <CreditCard className="h-4 w-4" />
+            {lang === "es" ? "Pre-Pago (Stripe)" : "Pre-Pay (Stripe)"}
           </button>
         </div>
 
@@ -756,6 +784,17 @@ export const OwnerDashboard: React.FC<OwnerDashboardProps> = ({
             </div>
           </div>
         </form>
+      )}
+
+      {/* Tab 5: Stripe Connect Pre-Payment */}
+      {activeTab === "payments" && onSaveStripeConfig && onConnectStripe && (
+        <StripePrepayPanel
+          stripeConfig={stripeConfig ?? null}
+          orders={orders}
+          onSaveConfig={onSaveStripeConfig}
+          onConnectStripe={onConnectStripe}
+          lang={lang}
+        />
       )}
 
       {/* Super-Admin Onboarding Wizard Modal */}

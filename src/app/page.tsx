@@ -20,6 +20,7 @@ import {
   RestaurantRoiMetrics,
   RestaurantBranding,
   FailoverConfig,
+  StripePrepayConfig,
   CallLogEntry,
 } from "../types/portal";
 import {
@@ -35,6 +36,9 @@ import {
   updateBranding,
   fetchFailoverConfig,
   updateFailoverConfig,
+  fetchStripePrepayConfig,
+  updateStripePrepayConfig,
+  createStripeConnectUrl,
   subscribeToKdsStream,
   switchRestaurantSession,
 } from "../lib/api-client";
@@ -55,6 +59,11 @@ export default function PortalHomePage() {
   const [metrics, setMetrics] = useState<RestaurantRoiMetrics | null>(null);
   const [branding, setBranding] = useState<RestaurantBranding | null>(null);
   const [failoverConfig, setFailoverConfig] = useState<FailoverConfig | null>(null);
+  const [stripeConfig, setStripeConfig] = useState<StripePrepayConfig | null>(null);
+  const [publicOrderNotice, setPublicOrderNotice] = useState<{
+    orderId: string;
+    paymentState: string;
+  } | null>(null);
   const [callLogs, setCallLogs] = useState<CallLogEntry[]>([]);
 
   const [loading, setLoading] = useState(true);
@@ -82,6 +91,12 @@ export default function PortalHomePage() {
       const browserLang = navigator.language.toLowerCase();
       if (browserLang.startsWith("en")) {
         setLang("en");
+      }
+      const params = new URLSearchParams(window.location.search);
+      const orderParam = params.get("order");
+      const paymentParam = params.get("payment");
+      if (orderParam && paymentParam) {
+        setPublicOrderNotice({ orderId: orderParam, paymentState: paymentParam });
       }
     }
   }, []);
@@ -173,6 +188,12 @@ export default function PortalHomePage() {
           currentToken
         );
         setFailoverConfig(fetchedFailover);
+
+        const fetchedStripe = await fetchStripePrepayConfig(
+          currentRestaurantId,
+          currentToken
+        ).catch(() => null);
+        if (fetchedStripe) setStripeConfig(fetchedStripe);
       }
 
       if (role === "support_latam") {
@@ -384,9 +405,77 @@ export default function PortalHomePage() {
     setFailoverConfig(updated);
   };
 
+  const handleSaveStripeConfig = async (config: {
+    prepay_enabled: boolean;
+    prepay_threshold_cents: number;
+    prepay_expiry_minutes: number;
+  }) => {
+    const updated = await updateStripePrepayConfig(
+      currentRestaurantId,
+      currentToken,
+      config
+    );
+    setStripeConfig((prev) => ({
+      ...updated,
+      stripe_connected: updated.stripe_connected ?? prev?.stripe_connected ?? false,
+      stripe_charges_enabled:
+        updated.stripe_charges_enabled ?? prev?.stripe_charges_enabled ?? false,
+    }));
+  };
+
+  const handleConnectStripe = async () => {
+    const connectUrl = await createStripeConnectUrl(
+      currentRestaurantId,
+      currentToken
+    );
+    window.location.href = connectUrl;
+  };
+
   const activeOrdersCount = orders.filter(
     (o) => o.status === "confirmed" || o.status === "in_kitchen"
   ).length;
+
+  // Show public diner order payment status if redirected from Stripe Checkout
+  if (!session && !isAuthChecking && publicOrderNotice) {
+    const isPaidSuccess = publicOrderNotice.paymentState === "success";
+    return (
+      <div className="min-h-screen flex items-center justify-center p-6 bg-[var(--surface-canvas)]">
+        <div className="max-w-md w-full bg-[var(--surface-raised)] border border-[var(--border-subtle)] rounded-2xl p-6 shadow-sm space-y-4 text-center">
+          <div
+            className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-bold border ${
+              isPaidSuccess
+                ? "bg-emerald-50 text-emerald-800 border-emerald-300"
+                : "bg-amber-50 text-amber-900 border-amber-300"
+            }`}
+          >
+            <span>
+              {isPaidSuccess
+                ? lang === "es"
+                  ? "Pagado — En preparación en cocina"
+                  : "Paid — Being prepared in kitchen"
+                : lang === "es"
+                ? "Pago cancelado o pendiente"
+                : "Payment cancelled or pending"}
+            </span>
+          </div>
+          <h1 className="text-lg font-black text-[var(--text-primary)]">
+            {lang === "es"
+              ? `Orden #${publicOrderNotice.orderId}`
+              : `Order #${publicOrderNotice.orderId}`}
+          </h1>
+          <p className="text-xs text-[var(--text-muted)]">
+            {isPaidSuccess
+              ? lang === "es"
+                ? "Recibimos tu pago correctamente. Tu orden ya pasó a cocina."
+                : "We received your payment. Your order has been sent to the kitchen."
+              : lang === "es"
+              ? "Puedes volver a abrir el enlace de pago que te enviamos por SMS."
+              : "You can reopen the payment link sent to you via SMS."}
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   // Show login screen if unauthenticated
   if (!session && !isAuthChecking) {
@@ -465,6 +554,10 @@ export default function PortalHomePage() {
                 onSaveBranding={handleSaveBranding}
                 failoverConfig={failoverConfig}
                 onSaveFailover={handleSaveFailover}
+                stripeConfig={stripeConfig}
+                orders={orders}
+                onSaveStripeConfig={handleSaveStripeConfig}
+                onConnectStripe={handleConnectStripe}
                 lang={lang}
                 token={currentToken}
                 onRestaurantCreated={async (newId, newName) => {

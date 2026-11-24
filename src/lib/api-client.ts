@@ -8,6 +8,7 @@ import {
   PortalRole,
   RestaurantBranding,
   RestaurantRoiMetrics,
+  StripePrepayConfig,
   TelnyxInventoryItem,
   TenantOnboardingData,
   WelcomeKit,
@@ -493,6 +494,75 @@ export async function onboardRestaurant(
     throw new Error(data.error || "Error al dar de alta el restaurante");
   }
   return data;
+}
+
+export async function fetchStripePrepayConfig(
+  restaurantId: string,
+  token: string
+): Promise<StripePrepayConfig> {
+  const res = await fetch(
+    `${API_BASE_URL}/api/restaurants/${restaurantId}/stripe/config`,
+    {
+      headers: { Authorization: `Bearer ${token}` },
+      cache: "no-store",
+    }
+  );
+  if (!res.ok) {
+    throw new Error(`HTTP ${res.status}: Failed to fetch Stripe config`);
+  }
+  return (await res.json()) as StripePrepayConfig;
+}
+
+export async function updateStripePrepayConfig(
+  restaurantId: string,
+  token: string,
+  config: {
+    prepay_enabled: boolean;
+    prepay_threshold_cents: number;
+    prepay_expiry_minutes: number;
+  }
+): Promise<StripePrepayConfig> {
+  const res = await fetch(
+    `${API_BASE_URL}/api/restaurants/${restaurantId}/stripe/config`,
+    {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify(config),
+    }
+  );
+  const data = (await res.json()) as StripePrepayConfig & {
+    ok?: boolean;
+    error?: string;
+  };
+  if (!res.ok || data.ok === false) {
+    throw new Error(data.error || `HTTP ${res.status}: Failed to save Stripe config`);
+  }
+  return data;
+}
+
+export async function createStripeConnectUrl(
+  restaurantId: string,
+  token: string
+): Promise<string> {
+  const res = await fetch(
+    `${API_BASE_URL}/api/restaurants/${restaurantId}/stripe/connect-url`,
+    {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}` },
+    }
+  );
+  const data = (await res.json()) as {
+    ok: boolean;
+    connect_url?: string;
+    error?: string;
+  };
+  if (!res.ok || !data.ok || !data.connect_url) {
+    throw new Error(data.error || "No se pudo generar el enlace de Stripe Connect");
+  }
+  return data.connect_url;
 }
 
 

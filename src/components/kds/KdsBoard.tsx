@@ -409,6 +409,18 @@ const OrderCard: React.FC<OrderCardProps> = ({
         </div>
       )}
 
+      {/* 1b. Pre-Paid Online Banner (Prevents double-charging at pickup counter) */}
+      {ticket.payment?.status === "paid" && (
+        <div className="bg-emerald-700 text-white px-3.5 py-2 font-black text-xs uppercase tracking-wide flex items-center gap-2">
+          <CheckCircle2 className="h-4 w-4 shrink-0 text-white" />
+          <span>
+            {lang === "es"
+              ? "PAGADO ONLINE — NO COBRAR"
+              : "PAID ONLINE — DO NOT CHARGE"}
+          </span>
+        </div>
+      )}
+
       {/* 2. Order Header: Short #, Customer, Elapsed Timer */}
       <div className="p-3.5 border-b border-[var(--border-subtle)] flex items-center justify-between gap-2 bg-[var(--surface-canvas)]/50">
         <div>

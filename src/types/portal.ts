@@ -1,6 +1,7 @@
 export type PortalRole = "owner" | "kitchen" | "support_latam";
 
 export type OrderStatus =
+  | "awaiting_payment"
   | "confirmed"
   | "in_kitchen"
   | "ready_for_pickup"
@@ -8,6 +9,14 @@ export type OrderStatus =
   | "transferred_to_human"
   | "abandoned"
   | "failed";
+
+export interface StripePrepayConfig {
+  stripe_connected: boolean;
+  stripe_charges_enabled: boolean;
+  prepay_enabled: boolean;
+  prepay_threshold_cents: number;
+  prepay_expiry_minutes: number;
+}
 
 export interface TicketModifier {
   group_id: string;
@@ -61,6 +70,12 @@ export interface OrderTicket {
     exceeded_unpaid_limit: boolean;
     transfer_reason: string | null;
     human_transfer_target: string | null;
+  };
+  payment?: {
+    method: "pay_at_pickup" | "restaurant_payment_link";
+    status: "unpaid_pay_at_counter" | "link_sent" | "paid" | "payment_expired";
+    payment_short_token?: string | null;
+    paid_at?: string | null;
   };
   artifacts: {
     transcript_url: string | null;
