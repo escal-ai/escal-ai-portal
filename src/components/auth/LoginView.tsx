@@ -56,8 +56,52 @@ export const LoginView: React.FC<LoginViewProps> = ({
       const list = await fetchPublicTenants();
       if (list.length > 0) {
         setTenants(list);
-        if (!list.some((t) => t.restaurant_id === selectedRestaurantId)) {
-          setSelectedRestaurantId(list[0].restaurant_id);
+
+        // Check for URL GET parameters: ?restaurant=..., ?r=..., ?code=..., ?pin=...
+        let matchedId: string | null = null;
+        let queryPin: string | null = null;
+
+        if (typeof window !== "undefined") {
+          const params = new URLSearchParams(window.location.search);
+          const paramRest =
+            params.get("restaurant") ||
+            params.get("restaurant_id") ||
+            params.get("r") ||
+            params.get("id") ||
+            params.get("code") ||
+            params.get("slug");
+
+          if (paramRest) {
+            const needle = paramRest.toLowerCase();
+            const found = list.find(
+              (t) =>
+                t.restaurant_id.toLowerCase() === needle ||
+                t.restaurant_id.toLowerCase().includes(needle) ||
+                t.name.toLowerCase().includes(needle) ||
+                (needle === "1002" && t.restaurant_id.includes("esquivel")) ||
+                (needle === "1001" && t.restaurant_id.includes("estrella"))
+            );
+            if (found) {
+              matchedId = found.restaurant_id;
+            }
+          }
+
+          const rawPin = params.get("pin");
+          if (rawPin && rawPin.length === 4 && /^\d{4}$/.test(rawPin)) {
+            queryPin = rawPin;
+          }
+        }
+
+        const effectiveId =
+          matchedId ||
+          (list.some((t) => t.restaurant_id === selectedRestaurantId)
+            ? selectedRestaurantId
+            : list[0].restaurant_id);
+        setSelectedRestaurantId(effectiveId);
+
+        if (queryPin) {
+          setPinDigits(queryPin);
+          void submitKitchenPin(queryPin, effectiveId);
         }
       }
     }
@@ -87,7 +131,10 @@ export const LoginView: React.FC<LoginViewProps> = ({
     setErrorMessage(null);
   };
 
-  const submitKitchenPin = async (pinToVerify = pinDigits) => {
+  const submitKitchenPin = async (
+    pinToVerify = pinDigits,
+    targetRestaurantId = selectedRestaurantId
+  ) => {
     if (pinToVerify.length !== 4) {
       setErrorMessage(
         lang === "es"
@@ -101,7 +148,7 @@ export const LoginView: React.FC<LoginViewProps> = ({
     setErrorMessage(null);
     try {
       const result = await loginWithKitchenPin(
-        selectedRestaurantId,
+        targetRestaurantId,
         pinToVerify
       );
       onLoginSuccess({
