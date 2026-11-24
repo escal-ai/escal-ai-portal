@@ -84,11 +84,7 @@ export default function PortalHomePage() {
   // 1. Initial Session & Language detection & Dark mode setup
   useEffect(() => {
     const stored = getStoredSession();
-    if (stored) {
-      setSession(stored);
-      setRole(stored.role);
-    }
-    setIsAuthChecking(false);
+    let shouldClearStoredForQuerySwitch = false;
 
     if (typeof window !== "undefined") {
       const browserLang = navigator.language.toLowerCase();
@@ -96,6 +92,30 @@ export default function PortalHomePage() {
         setLang("en");
       }
       const params = new URLSearchParams(window.location.search);
+      const paramRest =
+        params.get("restaurant") ||
+        params.get("restaurant_id") ||
+        params.get("r") ||
+        params.get("id") ||
+        params.get("code") ||
+        params.get("slug");
+
+      // If URL explicitly requests a different restaurant (e.g. ?restaurant=esquivel),
+      // clear any stale cached session for another restaurant so LoginView handles it cleanly.
+      if (paramRest && stored) {
+        const needle = paramRest.toLowerCase();
+        const matchesStored =
+          stored.restaurant_id.toLowerCase() === needle ||
+          stored.restaurant_id.toLowerCase().includes(needle) ||
+          stored.restaurant_name.toLowerCase().includes(needle) ||
+          (needle === "1002" && stored.restaurant_id.includes("esquivel")) ||
+          (needle === "1001" && stored.restaurant_id.includes("estrella"));
+        if (!matchesStored) {
+          clearSession();
+          shouldClearStoredForQuerySwitch = true;
+        }
+      }
+
       const orderParam = params.get("order");
       const paymentParam = params.get("payment");
       if (orderParam && paymentParam) {
@@ -106,6 +126,12 @@ export default function PortalHomePage() {
         setRole("owner");
       }
     }
+
+    if (stored && !shouldClearStoredForQuerySwitch) {
+      setSession(stored);
+      setRole(stored.role);
+    }
+    setIsAuthChecking(false);
   }, []);
 
   useEffect(() => {
