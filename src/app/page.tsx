@@ -207,7 +207,14 @@ export default function PortalHomePage() {
 
       setError(null);
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      const msg = err instanceof Error ? err.message : String(err);
+      if (msg.includes("401")) {
+        clearSession();
+        setSession(null);
+        setError(null);
+        return;
+      }
+      setError(msg);
     } finally {
       setLoading(false);
     }
