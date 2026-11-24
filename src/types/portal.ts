@@ -143,7 +143,52 @@ export interface FailoverConfig {
   restaurant_id: string;
   restaurant_name: string;
   primary_phone_e164: string;
+  assigned_did_e164?: string | null;
   failover_mode: "forward_to_phone" | "contingency_message";
   failover_phone_e164: string | null;
+  telephony_sync_status?: "synced" | "partial" | "mock" | "error" | null;
+  telephony_synced_at?: string | null;
   updated_at?: string;
+}
+
+export interface TelnyxInventoryItem {
+  id: string;
+  phone_number_e164: string;
+  status: string;
+  connection_name?: string | null;
+  is_assigned: boolean;
+  assigned_restaurant_id?: string | null;
+  assigned_restaurant_name?: string | null;
+  call_forwarding_enabled?: boolean;
+}
+
+export interface TenantOnboardingData {
+  restaurant_id: string;
+  display_name: string;
+  primary_phone_e164: string;
+  assigned_did_e164: string;
+  telnyx_number_id?: string;
+  failover_mode: "forward" | "message";
+  failover_phone_e164?: string | null;
+  owner_whatsapp_e164?: string | null;
+  kitchen_pin: string;
+  address: {
+    street: string;
+    city: string;
+    state: "CA";
+    zip: string;
+  };
+  tax_rate_bps: number;
+  menu_template: "tacos_birria" | "pupuseria" | "custom";
+}
+
+export interface WelcomeKit {
+  restaurant_id: string;
+  display_name: string;
+  assigned_did_e164: string;
+  kitchen_pin: string;
+  portal_url: string;
+  forwarding_activation_code: string;
+  forwarding_deactivation_code: string;
+  whatsapp_message_text: string;
 }

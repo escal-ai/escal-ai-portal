@@ -8,6 +8,9 @@ import {
   PortalRole,
   RestaurantBranding,
   RestaurantRoiMetrics,
+  TelnyxInventoryItem,
+  TenantOnboardingData,
+  WelcomeKit,
 } from "../types/portal";
 
 export async function fetchOrders(
@@ -433,4 +436,63 @@ export async function updateFailoverConfig(
   }
   return data.failover_config;
 }
+
+export async function fetchTelnyxInventory(
+  token: string
+): Promise<{ total: number; available_count: number; inventory: TelnyxInventoryItem[] }> {
+  const res = await fetch(`${API_BASE_URL}/api/admin/telephony/inventory`, {
+    headers: { Authorization: `Bearer ${token}` },
+    cache: "no-store",
+  });
+  if (!res.ok) {
+    throw new Error(`HTTP ${res.status}: Failed to fetch Telnyx inventory`);
+  }
+  const data = (await res.json()) as {
+    ok: boolean;
+    total: number;
+    available_count: number;
+    inventory: TelnyxInventoryItem[];
+    error?: string;
+  };
+  if (!data.ok) throw new Error(data.error || "Error fetching inventory");
+  return data;
+}
+
+export async function onboardRestaurant(
+  token: string,
+  payload: TenantOnboardingData
+): Promise<{
+  restaurant: {
+    restaurant_id: string;
+    name: string;
+    assigned_did_e164: string;
+    telephony_sync_status: string;
+  };
+  welcome_kit: WelcomeKit;
+}> {
+  const res = await fetch(`${API_BASE_URL}/api/admin/restaurants/onboard`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(payload),
+  });
+  const data = (await res.json()) as {
+    ok: boolean;
+    error?: string;
+    restaurant: {
+      restaurant_id: string;
+      name: string;
+      assigned_did_e164: string;
+      telephony_sync_status: string;
+    };
+    welcome_kit: WelcomeKit;
+  };
+  if (!res.ok || !data.ok) {
+    throw new Error(data.error || "Error al dar de alta el restaurante");
+  }
+  return data;
+}
+
 

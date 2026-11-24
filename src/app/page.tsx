@@ -466,6 +466,21 @@ export default function PortalHomePage() {
                 failoverConfig={failoverConfig}
                 onSaveFailover={handleSaveFailover}
                 lang={lang}
+                token={currentToken}
+                onRestaurantCreated={async (newId, newName) => {
+                  if (session) {
+                    const updatedSession = {
+                      ...session,
+                      available_restaurants: [
+                        ...(session.available_restaurants || []),
+                        { restaurant_id: newId, name: newName },
+                      ],
+                    };
+                    saveSession(updatedSession);
+                    setSession(updatedSession);
+                    await handleSwitchRestaurant(newId);
+                  }
+                }}
               />
             )}
 

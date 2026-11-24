@@ -15,6 +15,7 @@ import {
   ShieldCheck,
   AlertTriangle,
   PhoneForwarded,
+  Sparkles,
 } from "lucide-react";
 import {
   RestaurantRoiMetrics,
@@ -22,6 +23,7 @@ import {
   RestaurantBranding,
   FailoverConfig,
 } from "../../types/portal";
+import { OnboardingWizardModal } from "../admin/OnboardingWizardModal";
 
 interface OwnerDashboardProps {
   metrics: RestaurantRoiMetrics | null;
@@ -38,6 +40,8 @@ interface OwnerDashboardProps {
     failover_phone_e164: string | null;
   }) => Promise<void>;
   lang: "es" | "en";
+  token?: string;
+  onRestaurantCreated?: (id: string, name: string) => void;
 }
 
 export const OwnerDashboard: React.FC<OwnerDashboardProps> = ({
@@ -52,10 +56,13 @@ export const OwnerDashboard: React.FC<OwnerDashboardProps> = ({
   failoverConfig,
   onSaveFailover,
   lang,
+  token,
+  onRestaurantCreated,
 }) => {
   const [activeTab, setActiveTab] = useState<
     "roi" | "operations" | "branding" | "failover"
   >("roi");
+  const [isOnboardingOpen, setIsOnboardingOpen] = useState(false);
   const [prepTimeInput, setPrepTimeInput] = useState(defaultPrepMinutes);
   const [logoInput, setLogoInput] = useState(branding?.brand_logo_url || "");
   const [colorInput, setColorInput] = useState(branding?.brand_primary_color || "#c2410c");
@@ -141,51 +148,64 @@ export const OwnerDashboard: React.FC<OwnerDashboardProps> = ({
   return (
     <div data-surface="owner" className="p-4 max-w-5xl mx-auto space-y-6">
       {/* Navigation Tabs */}
-      <div className="flex border-b border-[var(--border-subtle)] gap-2">
-        <button
-          onClick={() => setActiveTab("roi")}
-          className={`pb-3 px-4 text-sm font-bold border-b-2 transition-all ${
-            activeTab === "roi"
-              ? "border-[var(--brand-accent)] text-[var(--text-primary)]"
-              : "border-transparent text-[var(--text-muted)] hover:text-[var(--text-secondary)]"
-          }`}
-        >
-          {lang === "es" ? "Métricas de Negocio & ROI" : "Business Metrics & ROI"}
-        </button>
+      <div className="flex items-center justify-between border-b border-[var(--border-subtle)] gap-2 flex-wrap pb-1">
+        <div className="flex gap-2 flex-wrap">
+          <button
+            onClick={() => setActiveTab("roi")}
+            className={`pb-3 px-4 text-sm font-bold border-b-2 transition-all ${
+              activeTab === "roi"
+                ? "border-[var(--brand-accent)] text-[var(--text-primary)]"
+                : "border-transparent text-[var(--text-muted)] hover:text-[var(--text-secondary)]"
+            }`}
+          >
+            {lang === "es" ? "Métricas de Negocio & ROI" : "Business Metrics & ROI"}
+          </button>
 
-        <button
-          onClick={() => setActiveTab("operations")}
-          className={`pb-3 px-4 text-sm font-bold border-b-2 transition-all ${
-            activeTab === "operations"
-              ? "border-[var(--brand-accent)] text-[var(--text-primary)]"
-              : "border-transparent text-[var(--text-muted)] hover:text-[var(--text-secondary)]"
-          }`}
-        >
-          {lang === "es" ? "Operaciones & Menú (86'd)" : "Operations & Menu (86'd)"}
-        </button>
+          <button
+            onClick={() => setActiveTab("operations")}
+            className={`pb-3 px-4 text-sm font-bold border-b-2 transition-all ${
+              activeTab === "operations"
+                ? "border-[var(--brand-accent)] text-[var(--text-primary)]"
+                : "border-transparent text-[var(--text-muted)] hover:text-[var(--text-secondary)]"
+            }`}
+          >
+            {lang === "es" ? "Operaciones & Menú (86'd)" : "Operations & Menu (86'd)"}
+          </button>
 
-        <button
-          onClick={() => setActiveTab("branding")}
-          className={`pb-3 px-4 text-sm font-bold border-b-2 transition-all ${
-            activeTab === "branding"
-              ? "border-[var(--brand-accent)] text-[var(--text-primary)]"
-              : "border-transparent text-[var(--text-muted)] hover:text-[var(--text-secondary)]"
-          }`}
-        >
-          {lang === "es" ? "Identidad & Marca" : "Branding & Identity"}
-        </button>
+          <button
+            onClick={() => setActiveTab("branding")}
+            className={`pb-3 px-4 text-sm font-bold border-b-2 transition-all ${
+              activeTab === "branding"
+                ? "border-[var(--brand-accent)] text-[var(--text-primary)]"
+                : "border-transparent text-[var(--text-muted)] hover:text-[var(--text-secondary)]"
+            }`}
+          >
+            {lang === "es" ? "Identidad & Marca" : "Branding & Identity"}
+          </button>
 
-        <button
-          onClick={() => setActiveTab("failover")}
-          className={`pb-3 px-4 text-sm font-bold border-b-2 transition-all flex items-center gap-1.5 ${
-            activeTab === "failover"
-              ? "border-[var(--brand-accent)] text-[var(--text-primary)]"
-              : "border-transparent text-[var(--text-muted)] hover:text-[var(--text-secondary)]"
-          }`}
-        >
-          <ShieldCheck className="h-4 w-4" />
-          {lang === "es" ? "Respaldo Telefónico" : "Phone Failover"}
-        </button>
+          <button
+            onClick={() => setActiveTab("failover")}
+            className={`pb-3 px-4 text-sm font-bold border-b-2 transition-all flex items-center gap-1.5 ${
+              activeTab === "failover"
+                ? "border-[var(--brand-accent)] text-[var(--text-primary)]"
+                : "border-transparent text-[var(--text-muted)] hover:text-[var(--text-secondary)]"
+            }`}
+          >
+            <ShieldCheck className="h-4 w-4" />
+            {lang === "es" ? "Respaldo Telefónico" : "Phone Failover"}
+          </button>
+        </div>
+
+        {token && (
+          <button
+            type="button"
+            onClick={() => setIsOnboardingOpen(true)}
+            className="mb-2 px-3.5 py-1.5 rounded-xl text-xs font-bold bg-amber-600 hover:bg-amber-500 text-white flex items-center gap-1.5 shadow-sm transition-all"
+          >
+            <Sparkles className="h-3.5 w-3.5" />
+            <span>{lang === "es" ? "➕ Nuevo Restaurante (Wizard)" : "➕ Onboard Restaurant"}</span>
+          </button>
+        )}
       </div>
 
       {/* Tab 1: ROI & Financial Metrics */}
@@ -559,19 +579,39 @@ export const OwnerDashboard: React.FC<OwnerDashboardProps> = ({
             </p>
           </div>
 
-          {/* Primary Line Info */}
-          <div className="p-3.5 rounded-xl bg-[var(--surface-muted)] border border-[var(--border-subtle)] flex items-center justify-between">
-            <div className="space-y-0.5">
-              <span className="text-[11px] font-bold uppercase tracking-wider text-[var(--text-muted)]">
-                {lang === "es" ? "Línea Principal del Restaurante (DID)" : "Primary Restaurant Phone (DID)"}
-              </span>
-              <p className="text-sm font-mono font-bold text-[var(--text-primary)]">
-                {primaryPhone}
-              </p>
+          {/* Primary Line Info & Edge Sync Status */}
+          <div className="p-4 rounded-xl bg-[var(--surface-muted)] border border-[var(--border-subtle)] space-y-3">
+            <div className="flex items-center justify-between flex-wrap gap-3">
+              <div className="space-y-0.5">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-[var(--text-muted)]">
+                  {lang === "es" ? "Línea del Restaurante (Origen *72)" : "Restaurant Phone (Origin *72)"}
+                </span>
+                <p className="text-sm font-mono font-bold text-[var(--text-primary)]">
+                  {primaryPhone}
+                </p>
+              </div>
+
+              <div className="space-y-0.5 text-right">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-[var(--text-muted)]">
+                  {lang === "es" ? "Número DID de IA Asignado" : "Assigned Voice AI DID"}
+                </span>
+                <p className="text-sm font-mono font-bold text-emerald-600 dark:text-emerald-400">
+                  {failoverConfig?.assigned_did_e164 || primaryPhone}
+                </p>
+              </div>
             </div>
-            <span className="text-xs px-2.5 py-1 rounded-md bg-emerald-50 text-emerald-700 border border-emerald-200 font-bold">
-              {lang === "es" ? "Línea Activa con IA" : "Active with AI"}
-            </span>
+
+            <div className="pt-2 border-t border-[var(--border-subtle)] flex items-center justify-between text-xs flex-wrap gap-2">
+              <span className="text-[var(--text-secondary)]">
+                {lang === "es" ? "Sincronización Multi-Cloud:" : "Multi-Cloud Sync Status:"}
+              </span>
+              <span className="flex items-center gap-1.5 font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/40 px-2.5 py-1 rounded-md border border-emerald-200">
+                <Check className="h-3.5 w-3.5" />
+                {failoverConfig?.telephony_sync_status === "synced" || !failoverConfig?.telephony_sync_status
+                  ? "Sincronizado con Telnyx y Cloudflare Edge"
+                  : failoverConfig.telephony_sync_status}
+              </span>
+            </div>
           </div>
 
           {/* Failover Mode Selector */}
@@ -716,6 +756,16 @@ export const OwnerDashboard: React.FC<OwnerDashboardProps> = ({
             </div>
           </div>
         </form>
+      )}
+
+      {/* Super-Admin Onboarding Wizard Modal */}
+      {token && (
+        <OnboardingWizardModal
+          isOpen={isOnboardingOpen}
+          onClose={() => setIsOnboardingOpen(false)}
+          token={token}
+          onRestaurantCreated={onRestaurantCreated}
+        />
       )}
     </div>
   );
