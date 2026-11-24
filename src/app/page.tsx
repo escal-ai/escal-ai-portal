@@ -39,6 +39,8 @@ import {
   fetchStripePrepayConfig,
   updateStripePrepayConfig,
   createStripeConnectUrl,
+  disconnectStripeAccount,
+  resendOrderPaymentSms,
   subscribeToKdsStream,
   switchRestaurantSession,
 } from "../lib/api-client";
@@ -60,6 +62,7 @@ export default function PortalHomePage() {
   const [branding, setBranding] = useState<RestaurantBranding | null>(null);
   const [failoverConfig, setFailoverConfig] = useState<FailoverConfig | null>(null);
   const [stripeConfig, setStripeConfig] = useState<StripePrepayConfig | null>(null);
+  const [justConnectedStripe, setJustConnectedStripe] = useState<boolean>(false);
   const [publicOrderNotice, setPublicOrderNotice] = useState<{
     orderId: string;
     paymentState: string;
@@ -97,6 +100,10 @@ export default function PortalHomePage() {
       const paymentParam = params.get("payment");
       if (orderParam && paymentParam) {
         setPublicOrderNotice({ orderId: orderParam, paymentState: paymentParam });
+      }
+      if (params.get("stripe_connected") === "true") {
+        setJustConnectedStripe(true);
+        setRole("owner");
       }
     }
   }, []);
@@ -438,6 +445,19 @@ export default function PortalHomePage() {
     window.location.href = connectUrl;
   };
 
+  const handleDisconnectStripe = async () => {
+    const updated = await disconnectStripeAccount(
+      currentRestaurantId,
+      currentToken
+    );
+    setStripeConfig(updated);
+    setJustConnectedStripe(false);
+  };
+
+  const handleResendPaymentSms = async (ticketId: string) => {
+    await resendOrderPaymentSms(currentRestaurantId, ticketId, currentToken);
+  };
+
   const activeOrdersCount = orders.filter(
     (o) => o.status === "confirmed" || o.status === "in_kitchen"
   ).length;
@@ -565,6 +585,10 @@ export default function PortalHomePage() {
                 orders={orders}
                 onSaveStripeConfig={handleSaveStripeConfig}
                 onConnectStripe={handleConnectStripe}
+                onDisconnectStripe={handleDisconnectStripe}
+                onResendPaymentSms={handleResendPaymentSms}
+                initialTab={justConnectedStripe ? "payments" : undefined}
+                justConnectedStripe={justConnectedStripe}
                 lang={lang}
                 token={currentToken}
                 onRestaurantCreated={async (newId, newName) => {

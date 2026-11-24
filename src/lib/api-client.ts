@@ -565,4 +565,49 @@ export async function createStripeConnectUrl(
   return data.connect_url;
 }
 
+export async function disconnectStripeAccount(
+  restaurantId: string,
+  token: string
+): Promise<StripePrepayConfig> {
+  const res = await fetch(
+    `${API_BASE_URL}/api/restaurants/${restaurantId}/stripe/disconnect`,
+    {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}` },
+    }
+  );
+  const data = (await res.json()) as StripePrepayConfig & {
+    ok?: boolean;
+    error?: string;
+  };
+  if (!res.ok || data.ok === false) {
+    throw new Error(data.error || "No se pudo desconectar la cuenta de Stripe");
+  }
+  return data;
+}
+
+export async function resendOrderPaymentSms(
+  restaurantId: string,
+  ticketId: string,
+  token: string
+): Promise<{ short_url: string; recipient_masked: string }> {
+  const res = await fetch(
+    `${API_BASE_URL}/api/restaurants/${restaurantId}/orders/${ticketId}/resend-payment-sms`,
+    {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}` },
+    }
+  );
+  const data = (await res.json()) as {
+    ok: boolean;
+    short_url: string;
+    recipient_masked: string;
+    error?: string;
+  };
+  if (!res.ok || !data.ok) {
+    throw new Error(data.error || "No se pudo reenviar el SMS de pago");
+  }
+  return data;
+}
+
 

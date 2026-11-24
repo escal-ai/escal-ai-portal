@@ -12,6 +12,18 @@ const nextConfig: NextConfig = {
       },
     },
   },
+  async rewrites() {
+    const engineBase = (
+      process.env.NEXT_PUBLIC_ENGINE_API_URL ||
+      "https://escal-ai-voice-engine-production.up.railway.app"
+    ).replace(/\/$/, "");
+    return [
+      {
+        source: "/p/:token",
+        destination: `${engineBase}/p/:token`,
+      },
+    ];
+  },
 };
 
 export default nextConfig;

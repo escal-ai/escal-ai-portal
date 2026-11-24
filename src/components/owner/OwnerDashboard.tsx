@@ -51,6 +51,10 @@ interface OwnerDashboardProps {
     prepay_expiry_minutes: number;
   }) => Promise<void>;
   onConnectStripe?: () => Promise<void>;
+  onDisconnectStripe?: () => Promise<void>;
+  onResendPaymentSms?: (ticketId: string) => Promise<void>;
+  initialTab?: "roi" | "operations" | "branding" | "failover" | "payments";
+  justConnectedStripe?: boolean;
   lang: "es" | "en";
   token?: string;
   onRestaurantCreated?: (id: string, name: string) => void;
@@ -71,13 +75,17 @@ export const OwnerDashboard: React.FC<OwnerDashboardProps> = ({
   orders = [],
   onSaveStripeConfig,
   onConnectStripe,
+  onDisconnectStripe,
+  onResendPaymentSms,
+  initialTab,
+  justConnectedStripe,
   lang,
   token,
   onRestaurantCreated,
 }) => {
   const [activeTab, setActiveTab] = useState<
     "roi" | "operations" | "branding" | "failover" | "payments"
-  >("roi");
+  >(initialTab ?? "roi");
   const [isOnboardingOpen, setIsOnboardingOpen] = useState(false);
   const [prepTimeInput, setPrepTimeInput] = useState(defaultPrepMinutes);
   const [logoInput, setLogoInput] = useState(branding?.brand_logo_url || "");
@@ -789,10 +797,14 @@ export const OwnerDashboard: React.FC<OwnerDashboardProps> = ({
       {/* Tab 5: Stripe Connect Pre-Payment */}
       {activeTab === "payments" && onSaveStripeConfig && onConnectStripe && (
         <StripePrepayPanel
+          key={`${stripeConfig?.stripe_connected ?? false}_${stripeConfig?.prepay_enabled ?? false}_${stripeConfig?.prepay_threshold_cents ?? 5000}_${stripeConfig?.prepay_expiry_minutes ?? 15}`}
           stripeConfig={stripeConfig ?? null}
           orders={orders}
           onSaveConfig={onSaveStripeConfig}
           onConnectStripe={onConnectStripe}
+          onDisconnectStripe={onDisconnectStripe}
+          onResendPaymentSms={onResendPaymentSms}
+          justConnectedBanner={justConnectedStripe}
           lang={lang}
         />
       )}

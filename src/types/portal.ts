@@ -13,6 +13,8 @@ export type OrderStatus =
 export interface StripePrepayConfig {
   stripe_connected: boolean;
   stripe_charges_enabled: boolean;
+  stripe_account_id_masked?: string | null;
+  platform_configured?: boolean;
   prepay_enabled: boolean;
   prepay_threshold_cents: number;
   prepay_expiry_minutes: number;

@@ -9,6 +9,9 @@ import {
   Save,
   Check,
   Clock,
+  Copy,
+  Send,
+  Unplug,
 } from "lucide-react";
 import { OrderTicket, StripePrepayConfig } from "../../types/portal";
 
@@ -21,15 +24,23 @@ interface StripePrepayPanelProps {
     prepay_expiry_minutes: number;
   }) => Promise<void>;
   onConnectStripe: () => Promise<void>;
+  onDisconnectStripe?: () => Promise<void>;
+  onResendPaymentSms?: (ticketId: string) => Promise<void>;
+  justConnectedBanner?: boolean;
   lang: "es" | "en";
 }
 
 const THRESHOLD_OPTIONS = [
-  { cents: 4000, label: "$40.00" },
-  { cents: 5000, label: "$50.00" },
-  { cents: 6000, label: "$60.00" },
-  { cents: 7500, label: "$75.00" },
-  { cents: 10000, label: "$100.00" },
+  {
+    cents: 0,
+    labelEs: "Todos los pedidos ($0+)",
+    labelEn: "All orders ($0+)",
+  },
+  { cents: 4000, labelEs: "$40.00+", labelEn: "$40.00+" },
+  { cents: 5000, labelEs: "$50.00+", labelEn: "$50.00+" },
+  { cents: 6000, labelEs: "$60.00+", labelEn: "$60.00+" },
+  { cents: 7500, labelEs: "$75.00+", labelEn: "$75.00+" },
+  { cents: 10000, labelEs: "$100.00+", labelEn: "$100.00+" },
 ];
 
 const EXPIRY_OPTIONS = [15, 20, 30];
@@ -39,6 +50,9 @@ export const StripePrepayPanel: React.FC<StripePrepayPanelProps> = ({
   orders,
   onSaveConfig,
   onConnectStripe,
+  onDisconnectStripe,
+  onResendPaymentSms,
+  justConnectedBanner,
   lang,
 }) => {
   const [prepayEnabled, setPrepayEnabled] = useState(
@@ -52,16 +66,19 @@ export const StripePrepayPanel: React.FC<StripePrepayPanelProps> = ({
   );
   const [isSaving, setIsSaving] = useState(false);
   const [isConnecting, setIsConnecting] = useState(false);
+  const [isDisconnecting, setIsDisconnecting] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
+  const [copiedTicketId, setCopiedTicketId] = useState<string | null>(null);
+  const [resendingTicketId, setResendingTicketId] = useState<string | null>(null);
+  const [resentTicketId, setResentTicketId] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  const isConnected = Boolean(
+  const isLinked = Boolean(stripeConfig?.stripe_connected);
+  const chargesReady = Boolean(
     stripeConfig?.stripe_connected && stripeConfig?.stripe_charges_enabled
   );
 
-  const awaitingCount = orders.filter(
-    (o) => o.status === "awaiting_payment"
-  ).length;
+  const awaitingOrders = orders.filter((o) => o.status === "awaiting_payment");
   const expiredCount = orders.filter(
     (o) => o.payment?.status === "payment_expired"
   ).length;
@@ -96,43 +113,98 @@ export const StripePrepayPanel: React.FC<StripePrepayPanelProps> = ({
     }
   };
 
+  const handleDisconnect = async () => {
+    if (!onDisconnectStripe) return;
+    setIsDisconnecting(true);
+    setErrorMsg(null);
+    try {
+      await onDisconnectStripe();
+      setPrepayEnabled(false);
+    } catch (err) {
+      setErrorMsg(err instanceof Error ? err.message : String(err));
+    } finally {
+      setIsDisconnecting(false);
+    }
+  };
+
+  const handleCopyShortLink = async (ticket: OrderTicket) => {
+    const token = ticket.payment?.payment_short_token;
+    if (!token) return;
+    const url = `${window.location.origin}/p/${token}`;
+    await navigator.clipboard.writeText(url);
+    setCopiedTicketId(ticket.ticket_id);
+    setTimeout(() => setCopiedTicketId(null), 2500);
+  };
+
+  const handleResendSms = async (ticketId: string) => {
+    if (!onResendPaymentSms) return;
+    setResendingTicketId(ticketId);
+    setErrorMsg(null);
+    try {
+      await onResendPaymentSms(ticketId);
+      setResentTicketId(ticketId);
+      setTimeout(() => setResentTicketId(null), 3000);
+    } catch (err) {
+      setErrorMsg(err instanceof Error ? err.message : String(err));
+    } finally {
+      setResendingTicketId(null);
+    }
+  };
+
   return (
     <div className="bg-[var(--surface-raised)] p-6 rounded-2xl border border-[var(--border-subtle)] shadow-sm space-y-6 max-w-2xl">
+      {justConnectedBanner && (
+        <div className="p-3.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-300 dark:border-emerald-700 text-emerald-900 dark:text-emerald-200 text-xs font-bold flex items-center gap-2">
+          <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-700 dark:text-emerald-400" />
+          <span>
+            {lang === "es"
+              ? "¡Cuenta de Stripe conectada con éxito! El pre-pago por SMS ya está activo."
+              : "Stripe account connected! SMS pre-payment is now active."}
+          </span>
+        </div>
+      )}
+
       <div className="flex flex-wrap items-start justify-between gap-4 border-b border-[var(--border-subtle)] pb-4">
         <div className="space-y-1">
           <div className="flex items-center gap-2">
             <CreditCard className="h-5 w-5 text-[var(--brand-accent)]" />
             <h3 className="text-base font-bold text-[var(--text-primary)]">
               {lang === "es"
-                ? "Pre-Pago en Pedidos Grandes (Stripe)"
-                : "Pre-Payment for Large Orders (Stripe)"}
+                ? "Enlace de Pago Previo por SMS / WhatsApp (Stripe)"
+                : "SMS / WhatsApp Pre-Payment Link (Stripe)"}
             </h3>
           </div>
           <p className="text-xs text-[var(--text-muted)]">
             {lang === "es"
-              ? "Los pagos van directo a tu cuenta bancaria vía Stripe Connect Standard. Si no conectas Stripe, los pedidos grandes se transfieren al mostrador."
-              : "Payments go directly to your bank account via Stripe Connect Standard. Without Stripe, large orders transfer to counter staff."}
+              ? "El pago entra directo a tu banco vía Stripe Connect Standard. Puedes exigirlo en todos los pedidos o solo a partir de cierto monto."
+              : "Payments go directly to your bank via Stripe Connect Standard. Require it on all orders or above a threshold."}
           </p>
         </div>
 
         {/* Icon + Text Status Signal (Never color-only) */}
         <span
           className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold border ${
-            isConnected
+            chargesReady
               ? "bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-200 border-emerald-300 dark:border-emerald-700"
+              : isLinked
+              ? "bg-amber-50 dark:bg-amber-950/40 text-amber-900 dark:text-amber-200 border-amber-300 dark:border-amber-700"
               : "bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 border-slate-300 dark:border-slate-700"
           }`}
         >
-          {isConnected ? (
+          {chargesReady ? (
             <CheckCircle2 className="h-4 w-4 text-emerald-700 dark:text-emerald-400" />
           ) : (
-            <AlertCircle className="h-4 w-4 text-slate-600 dark:text-slate-400" />
+            <AlertCircle className="h-4 w-4" />
           )}
           <span>
-            {isConnected
+            {chargesReady
               ? lang === "es"
-                ? "Conectado"
-                : "Connected"
+                ? "Conectado y Activo"
+                : "Connected & Active"
+              : isLinked
+              ? lang === "es"
+                ? "Conectado (Revisión pendiente en Stripe)"
+                : "Connected (Pending Stripe verification)"
               : lang === "es"
               ? "Sin conectar"
               : "Not connected"}
@@ -140,68 +212,78 @@ export const StripePrepayPanel: React.FC<StripePrepayPanelProps> = ({
         </span>
       </div>
 
-      {/* Discrete Awaiting / Expired Order Counters */}
-      {(awaitingCount > 0 || expiredCount > 0) && (
-        <div className="grid grid-cols-2 gap-3">
-          <div className="p-3 rounded-xl bg-[var(--surface-canvas)] border border-[var(--border-subtle)] flex items-center justify-between">
-            <span className="text-xs font-semibold text-[var(--text-secondary)]">
-              {lang === "es" ? "Esperando pago" : "Awaiting payment"}
-            </span>
-            <span className="text-sm font-black tabular-nums text-[var(--text-primary)]">
-              {awaitingCount}
-            </span>
-          </div>
-          <div className="p-3 rounded-xl bg-[var(--surface-canvas)] border border-[var(--border-subtle)] flex items-center justify-between">
-            <span className="text-xs font-semibold text-[var(--text-secondary)]">
-              {lang === "es" ? "Expiradas sin pago" : "Expired unpaid"}
-            </span>
-            <span className="text-sm font-black tabular-nums text-[var(--text-primary)]">
-              {expiredCount}
-            </span>
-          </div>
+      {/* Warning if Stripe account is linked but charges_enabled is false */}
+      {isLinked && !chargesReady && (
+        <div className="p-3.5 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-300 text-amber-900 dark:text-amber-200 text-xs font-semibold flex items-center gap-2">
+          <AlertCircle className="h-4 w-4 shrink-0" />
+          <span>
+            {lang === "es"
+              ? "Tu cuenta de Stripe está vinculada, pero Stripe aún requiere que completes tus datos bancarios o fiscales en su panel para habilitar cobros."
+              : "Your Stripe account is linked, but Stripe requires you to complete bank/tax details in their dashboard to enable charges."}
+          </span>
         </div>
       )}
 
-      {/* OAuth Connect Button */}
+      {/* OAuth Connect & Account Box */}
       <div className="p-4 rounded-xl bg-[var(--surface-canvas)] border border-[var(--border-subtle)] flex flex-wrap items-center justify-between gap-3">
         <div className="space-y-0.5">
           <div className="text-sm font-bold text-[var(--text-primary)]">
-            {isConnected
+            {isLinked
               ? lang === "es"
-                ? "Cuenta de Stripe vinculada"
-                : "Stripe account linked"
+                ? `Cuenta vinculada: ${stripeConfig?.stripe_account_id_masked ?? "Stripe Standard"}`
+                : `Linked account: ${stripeConfig?.stripe_account_id_masked ?? "Stripe Standard"}`
               : lang === "es"
               ? "Conecta tu cuenta de Stripe"
               : "Connect your Stripe account"}
           </div>
           <div className="text-xs text-[var(--text-muted)]">
             {lang === "es"
-              ? "Compatible con Apple Pay, Google Pay y tarjetas en 1 clic."
+              ? "Compatible con Apple Pay, Google Pay y tarjetas en 1 toque."
               : "Supports Apple Pay, Google Pay, and 1-tap cards."}
           </div>
         </div>
 
-        <button
-          type="button"
-          onClick={handleConnect}
-          disabled={isConnecting}
-          className="px-4 py-2.5 rounded-xl text-xs font-bold bg-slate-900 hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-200 text-white flex items-center gap-2 transition-colors disabled:opacity-60"
-        >
-          <ExternalLink className="h-4 w-4" />
-          <span>
-            {isConnecting
-              ? lang === "es"
-                ? "Abriendo Stripe..."
-                : "Opening Stripe..."
-              : isConnected
-              ? lang === "es"
-                ? "Reconectar Stripe"
-                : "Reconnect Stripe"
-              : lang === "es"
-              ? "Conectar cuenta de Stripe"
-              : "Connect Stripe Account"}
-          </span>
-        </button>
+        <div className="flex items-center gap-2">
+          {isLinked && onDisconnectStripe && (
+            <button
+              type="button"
+              onClick={handleDisconnect}
+              disabled={isDisconnecting}
+              className="px-3 py-2 rounded-xl text-xs font-bold border border-red-300 text-red-800 dark:text-red-300 hover:bg-red-50 dark:hover:bg-red-950/30 flex items-center gap-1.5 transition-colors disabled:opacity-60"
+            >
+              <Unplug className="h-3.5 w-3.5" />
+              <span>
+                {isDisconnecting
+                  ? "..."
+                  : lang === "es"
+                  ? "Desconectar"
+                  : "Disconnect"}
+              </span>
+            </button>
+          )}
+
+          <button
+            type="button"
+            onClick={handleConnect}
+            disabled={isConnecting}
+            className="px-4 py-2.5 rounded-xl text-xs font-bold bg-slate-900 hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-200 text-white flex items-center gap-2 transition-colors disabled:opacity-60"
+          >
+            <ExternalLink className="h-4 w-4" />
+            <span>
+              {isConnecting
+                ? lang === "es"
+                  ? "Abriendo Stripe..."
+                  : "Opening Stripe..."
+                : isLinked
+                ? lang === "es"
+                  ? "Reconectar Stripe"
+                  : "Reconnect Stripe"
+                : lang === "es"
+                ? "Conectar cuenta de Stripe"
+                : "Connect Stripe Account"}
+            </span>
+          </button>
+        </div>
       </div>
 
       {/* Pre-Pay Configuration Form */}
@@ -210,13 +292,13 @@ export const StripePrepayPanel: React.FC<StripePrepayPanelProps> = ({
           <div>
             <div className="text-sm font-bold text-[var(--text-primary)]">
               {lang === "es"
-                ? "Activar enlace de pago previo por SMS"
-                : "Enable SMS pre-payment link"}
+                ? "Activar enlace de pago previo por SMS / WhatsApp"
+                : "Enable SMS / WhatsApp pre-payment link"}
             </div>
             <div className="text-xs text-[var(--text-muted)]">
               {lang === "es"
-                ? "Envía enlace seguro antes de pasar la orden a cocina."
-                : "Sends secure link before sending the order to kitchen."}
+                ? "La orden no entra al KDS ni a la impresora de cocina hasta que Stripe confirme el pago."
+                : "Orders do not enter KDS or kitchen printer until Stripe confirms payment."}
             </div>
           </div>
           <input
@@ -230,8 +312,8 @@ export const StripePrepayPanel: React.FC<StripePrepayPanelProps> = ({
         <div className="space-y-2">
           <label className="block text-xs font-bold uppercase tracking-wider text-[var(--text-secondary)]">
             {lang === "es"
-              ? "Umbral mínimo para pedir pre-pago"
-              : "Minimum threshold for pre-payment"}
+              ? "¿En qué pedidos enviar el enlace de pago?"
+              : "When to require payment link?"}
           </label>
           <div className="flex flex-wrap gap-2">
             {THRESHOLD_OPTIONS.map((opt) => (
@@ -239,13 +321,13 @@ export const StripePrepayPanel: React.FC<StripePrepayPanelProps> = ({
                 key={opt.cents}
                 type="button"
                 onClick={() => setThresholdCents(opt.cents)}
-                className={`px-4 py-2 rounded-xl text-xs font-bold border tabular-nums transition-colors ${
+                className={`px-3.5 py-2 rounded-xl text-xs font-bold border tabular-nums transition-colors ${
                   thresholdCents === opt.cents
                     ? "bg-slate-900 text-white border-slate-900 dark:bg-white dark:text-slate-900 dark:border-white"
                     : "bg-[var(--surface-canvas)] text-[var(--text-primary)] border-[var(--border-subtle)] hover:bg-[var(--surface-muted)]"
                 }`}
               >
-                {opt.label}
+                {lang === "es" ? opt.labelEs : opt.labelEn}
               </button>
             ))}
           </div>
@@ -311,6 +393,103 @@ export const StripePrepayPanel: React.FC<StripePrepayPanelProps> = ({
           )}
         </button>
       </form>
+
+      {/* Live Awaiting Payment Orders List with Copy Link & Resend SMS */}
+      <div className="pt-4 border-t border-[var(--border-subtle)] space-y-3">
+        <div className="flex items-center justify-between">
+          <span className="text-xs font-bold uppercase tracking-wider text-[var(--text-secondary)]">
+            {lang === "es"
+              ? `Órdenes Esperando Pago (${awaitingOrders.length})`
+              : `Orders Awaiting Payment (${awaitingOrders.length})`}
+          </span>
+          {expiredCount > 0 && (
+            <span className="text-xs text-[var(--text-muted)]">
+              {lang === "es"
+                ? `Expiradas hoy: ${expiredCount}`
+                : `Expired today: ${expiredCount}`}
+            </span>
+          )}
+        </div>
+
+        {awaitingOrders.length === 0 ? (
+          <div className="p-4 rounded-xl bg-[var(--surface-canvas)] border border-[var(--border-subtle)] text-xs text-[var(--text-muted)]">
+            {lang === "es"
+              ? "No hay pedidos retenidos esperando pago en este momento."
+              : "No orders waiting for payment right now."}
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {awaitingOrders.map((ticket) => (
+              <div
+                key={ticket.ticket_id}
+                className="p-3.5 rounded-xl bg-[var(--surface-canvas)] border border-[var(--border-subtle)] flex flex-wrap items-center justify-between gap-3"
+              >
+                <div className="space-y-0.5">
+                  <div className="text-sm font-bold text-[var(--text-primary)]">
+                    #{ticket.ticket_id.slice(-4).toUpperCase()} —{" "}
+                    {ticket.customer.name || (lang === "es" ? "Cliente" : "Customer")}{" "}
+                    <span className="font-black tabular-nums">
+                      ({ticket.totals.formatted_total})
+                    </span>
+                  </div>
+                  <div className="text-xs text-[var(--text-muted)]">
+                    {ticket.customer.phone_masked}
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  {ticket.payment?.payment_short_token && (
+                    <button
+                      type="button"
+                      onClick={() => void handleCopyShortLink(ticket)}
+                      className="px-3 py-1.5 rounded-lg text-xs font-bold border border-[var(--border-subtle)] bg-[var(--surface-raised)] text-[var(--text-primary)] hover:bg-[var(--surface-muted)] flex items-center gap-1.5"
+                    >
+                      {copiedTicketId === ticket.ticket_id ? (
+                        <>
+                          <Check className="h-3.5 w-3.5 text-emerald-600" />
+                          <span>{lang === "es" ? "Copiado" : "Copied"}</span>
+                        </>
+                      ) : (
+                        <>
+                          <Copy className="h-3.5 w-3.5" />
+                          <span>{lang === "es" ? "Copiar Link" : "Copy Link"}</span>
+                        </>
+                      )}
+                    </button>
+                  )}
+
+                  {onResendPaymentSms && (
+                    <button
+                      type="button"
+                      onClick={() => void handleResendSms(ticket.ticket_id)}
+                      disabled={resendingTicketId === ticket.ticket_id}
+                      className="px-3 py-1.5 rounded-lg text-xs font-bold bg-slate-900 text-white dark:bg-white dark:text-slate-900 flex items-center gap-1.5 disabled:opacity-60"
+                    >
+                      {resentTicketId === ticket.ticket_id ? (
+                        <>
+                          <Check className="h-3.5 w-3.5 text-emerald-400" />
+                          <span>{lang === "es" ? "SMS Enviado" : "SMS Sent"}</span>
+                        </>
+                      ) : (
+                        <>
+                          <Send className="h-3.5 w-3.5" />
+                          <span>
+                            {resendingTicketId === ticket.ticket_id
+                              ? "..."
+                              : lang === "es"
+                              ? "Reenviar SMS"
+                              : "Resend SMS"}
+                          </span>
+                        </>
+                      )}
+                    </button>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 };
