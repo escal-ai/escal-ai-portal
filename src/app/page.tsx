@@ -19,6 +19,7 @@ import {
   MenuItemAvailability,
   RestaurantRoiMetrics,
   RestaurantBranding,
+  FailoverConfig,
   CallLogEntry,
 } from "../types/portal";
 import {
@@ -32,6 +33,8 @@ import {
   fetchCallLogs,
   fetchBranding,
   updateBranding,
+  fetchFailoverConfig,
+  updateFailoverConfig,
   subscribeToKdsStream,
   switchRestaurantSession,
 } from "../lib/api-client";
@@ -51,6 +54,7 @@ export default function PortalHomePage() {
   const [defaultPrepMinutes, setDefaultPrepMinutes] = useState(20);
   const [metrics, setMetrics] = useState<RestaurantRoiMetrics | null>(null);
   const [branding, setBranding] = useState<RestaurantBranding | null>(null);
+  const [failoverConfig, setFailoverConfig] = useState<FailoverConfig | null>(null);
   const [callLogs, setCallLogs] = useState<CallLogEntry[]>([]);
 
   const [loading, setLoading] = useState(true);
@@ -163,6 +167,12 @@ export default function PortalHomePage() {
           currentToken
         );
         setBranding(fetchedBranding);
+
+        const fetchedFailover = await fetchFailoverConfig(
+          currentRestaurantId,
+          currentToken
+        );
+        setFailoverConfig(fetchedFailover);
       }
 
       if (role === "support_latam") {
@@ -362,6 +372,18 @@ export default function PortalHomePage() {
     setBranding(updated);
   };
 
+  const handleSaveFailover = async (config: {
+    failover_mode: "forward_to_phone" | "contingency_message";
+    failover_phone_e164: string | null;
+  }) => {
+    const updated = await updateFailoverConfig(
+      currentRestaurantId,
+      currentToken,
+      config
+    );
+    setFailoverConfig(updated);
+  };
+
   const activeOrdersCount = orders.filter(
     (o) => o.status === "confirmed" || o.status === "in_kitchen"
   ).length;
@@ -441,6 +463,8 @@ export default function PortalHomePage() {
                 onToggleOption={handleToggleOption}
                 branding={branding}
                 onSaveBranding={handleSaveBranding}
+                failoverConfig={failoverConfig}
+                onSaveFailover={handleSaveFailover}
                 lang={lang}
               />
             )}

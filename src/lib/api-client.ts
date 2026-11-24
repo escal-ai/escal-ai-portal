@@ -1,6 +1,7 @@
 import { API_BASE_URL } from "./constants";
 import {
   CallLogEntry,
+  FailoverConfig,
   MenuItemAvailability,
   OrderStatus,
   OrderTicket,
@@ -379,3 +380,57 @@ export async function switchRestaurantSession(
   }
   return data;
 }
+
+export async function fetchFailoverConfig(
+  restaurantId: string,
+  token: string
+): Promise<FailoverConfig | null> {
+  try {
+    const res = await fetch(
+      `${API_BASE_URL}/api/restaurants/${restaurantId}/failover-config`,
+      {
+        headers: { Authorization: `Bearer ${token}` },
+        cache: "no-store",
+      }
+    );
+    if (!res.ok) return null;
+    const data = (await res.json()) as {
+      ok: boolean;
+      failover_config: FailoverConfig;
+    };
+    return data.failover_config;
+  } catch {
+    return null;
+  }
+}
+
+export async function updateFailoverConfig(
+  restaurantId: string,
+  token: string,
+  config: {
+    failover_mode: "forward_to_phone" | "contingency_message";
+    failover_phone_e164: string | null;
+  }
+): Promise<FailoverConfig> {
+  const res = await fetch(
+    `${API_BASE_URL}/api/restaurants/${restaurantId}/failover-config`,
+    {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify(config),
+    }
+  );
+  const data = (await res.json()) as {
+    ok: boolean;
+    error?: string;
+    failover_config: FailoverConfig;
+  };
+  if (!res.ok || !data.ok) {
+    throw new Error(data.error || "Error al actualizar plan de respaldo");
+  }
+  return data.failover_config;
+}
+

@@ -12,11 +12,15 @@ import {
   Save,
   SlidersHorizontal,
   Flame,
+  ShieldCheck,
+  AlertTriangle,
+  PhoneForwarded,
 } from "lucide-react";
 import {
   RestaurantRoiMetrics,
   MenuItemAvailability,
   RestaurantBranding,
+  FailoverConfig,
 } from "../../types/portal";
 
 interface OwnerDashboardProps {
@@ -28,6 +32,11 @@ interface OwnerDashboardProps {
   onToggleOption: (groupId: string, optionId: string, available: boolean) => Promise<void>;
   branding: RestaurantBranding | null;
   onSaveBranding: (branding: Partial<RestaurantBranding>) => Promise<void>;
+  failoverConfig?: FailoverConfig | null;
+  onSaveFailover?: (config: {
+    failover_mode: "forward_to_phone" | "contingency_message";
+    failover_phone_e164: string | null;
+  }) => Promise<void>;
   lang: "es" | "en";
 }
 
@@ -40,15 +49,69 @@ export const OwnerDashboard: React.FC<OwnerDashboardProps> = ({
   onToggleOption,
   branding,
   onSaveBranding,
+  failoverConfig,
+  onSaveFailover,
   lang,
 }) => {
-  const [activeTab, setActiveTab] = useState<"roi" | "operations" | "branding">("roi");
+  const [activeTab, setActiveTab] = useState<
+    "roi" | "operations" | "branding" | "failover"
+  >("roi");
   const [prepTimeInput, setPrepTimeInput] = useState(defaultPrepMinutes);
   const [logoInput, setLogoInput] = useState(branding?.brand_logo_url || "");
   const [colorInput, setColorInput] = useState(branding?.brand_primary_color || "#c2410c");
   const [langPref, setLangPref] = useState<"es" | "en">(branding?.preferred_language || "es");
   const [isSavingBranding, setIsSavingBranding] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
+
+  // Failover state
+  const [failoverMode, setFailoverMode] = useState<
+    "forward_to_phone" | "contingency_message"
+  >(failoverConfig?.failover_mode || "forward_to_phone");
+  const [failoverPhone, setFailoverPhone] = useState(
+    failoverConfig?.failover_phone_e164 || ""
+  );
+  const [isSavingFailover, setIsSavingFailover] = useState(false);
+  const [failoverSaveSuccess, setFailoverSaveSuccess] = useState(false);
+  const [failoverError, setFailoverError] = useState<string | null>(null);
+
+  const primaryPhone = failoverConfig?.primary_phone_e164 || "+12137760006";
+
+  // Real-time Anti-Loop Check
+  const isAntiLoopViolation =
+    failoverMode === "forward_to_phone" &&
+    failoverPhone.trim().length > 0 &&
+    failoverPhone.replace(/\D/g, "") === primaryPhone.replace(/\D/g, "");
+
+  const handleSaveFailover = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (isAntiLoopViolation) {
+      setFailoverError(
+        lang === "es"
+          ? "Anti-bucle de seguridad: El teléfono de respaldo no puede ser el mismo número principal del restaurante (*72 bucle infinito)."
+          : "Safety Anti-Loop: Failover phone cannot match the restaurant's primary DID (*72 infinite loop)."
+      );
+      return;
+    }
+
+    if (!onSaveFailover) return;
+    setIsSavingFailover(true);
+    setFailoverError(null);
+    try {
+      await onSaveFailover({
+        failover_mode: failoverMode,
+        failover_phone_e164:
+          failoverMode === "forward_to_phone" && failoverPhone.trim()
+            ? failoverPhone.trim()
+            : null,
+      });
+      setFailoverSaveSuccess(true);
+      setTimeout(() => setFailoverSaveSuccess(false), 3000);
+    } catch (err) {
+      setFailoverError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setIsSavingFailover(false);
+    }
+  };
 
   const handleSaveBranding = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -110,6 +173,18 @@ export const OwnerDashboard: React.FC<OwnerDashboardProps> = ({
           }`}
         >
           {lang === "es" ? "Identidad & Marca" : "Branding & Identity"}
+        </button>
+
+        <button
+          onClick={() => setActiveTab("failover")}
+          className={`pb-3 px-4 text-sm font-bold border-b-2 transition-all flex items-center gap-1.5 ${
+            activeTab === "failover"
+              ? "border-[var(--brand-accent)] text-[var(--text-primary)]"
+              : "border-transparent text-[var(--text-muted)] hover:text-[var(--text-secondary)]"
+          }`}
+        >
+          <ShieldCheck className="h-4 w-4" />
+          {lang === "es" ? "Respaldo Telefónico" : "Phone Failover"}
         </button>
       </div>
 
@@ -458,6 +533,185 @@ export const OwnerDashboard: React.FC<OwnerDashboardProps> = ({
               >
                 <Save className="h-4 w-4" />
                 <span>{isSavingBranding ? "Guardando..." : lang === "es" ? "Guardar Cambios" : "Save Changes"}</span>
+              </button>
+            </div>
+          </div>
+        </form>
+      )}
+
+      {/* Tab 4: Multi-Cloud Telephone Failover Plan */}
+      {activeTab === "failover" && (
+        <form
+          onSubmit={handleSaveFailover}
+          className="bg-[var(--surface-card)] rounded-2xl border border-[var(--border-subtle)] p-6 space-y-6 shadow-sm"
+        >
+          <div className="space-y-1">
+            <h3 className="font-bold text-lg text-[var(--text-primary)] flex items-center gap-2">
+              <ShieldCheck className="h-5 w-5 text-emerald-600" />
+              {lang === "es"
+                ? "Plan de Respaldo Telefónico de Emergencia (Failover)"
+                : "Emergency Phone Failover Plan"}
+            </h3>
+            <p className="text-xs text-[var(--text-muted)]">
+              {lang === "es"
+                ? "Garantiza la continuidad del restaurante. Si la IA de voz o los servidores de nube sufren una desconexión (>5s), la red de telecomunicaciones (Telnyx) activa este plan automáticamente sin perder llamadas."
+                : "Protects business continuity. If voice AI or cloud servers experience downtime (>5s), the telecom network (Telnyx) triggers this rescue plan automatically."}
+            </p>
+          </div>
+
+          {/* Primary Line Info */}
+          <div className="p-3.5 rounded-xl bg-[var(--surface-muted)] border border-[var(--border-subtle)] flex items-center justify-between">
+            <div className="space-y-0.5">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-[var(--text-muted)]">
+                {lang === "es" ? "Línea Principal del Restaurante (DID)" : "Primary Restaurant Phone (DID)"}
+              </span>
+              <p className="text-sm font-mono font-bold text-[var(--text-primary)]">
+                {primaryPhone}
+              </p>
+            </div>
+            <span className="text-xs px-2.5 py-1 rounded-md bg-emerald-50 text-emerald-700 border border-emerald-200 font-bold">
+              {lang === "es" ? "Línea Activa con IA" : "Active with AI"}
+            </span>
+          </div>
+
+          {/* Failover Mode Selector */}
+          <div className="space-y-3">
+            <label className="text-xs font-bold text-[var(--text-secondary)] uppercase tracking-wider">
+              {lang === "es" ? "Comportamiento de Emergencia" : "Emergency Behavior"}
+            </label>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {/* Option 1: Forward to Human Phone */}
+              <div
+                onClick={() => setFailoverMode("forward_to_phone")}
+                className={`p-4 rounded-xl border cursor-pointer transition-all ${
+                  failoverMode === "forward_to_phone"
+                    ? "border-emerald-600 bg-emerald-50/20 ring-1 ring-emerald-600"
+                    : "border-[var(--border-subtle)] bg-[var(--surface-card)] hover:border-[var(--border-default)]"
+                }`}
+              >
+                <div className="flex items-start gap-3">
+                  <input
+                    type="radio"
+                    name="failoverMode"
+                    checked={failoverMode === "forward_to_phone"}
+                    onChange={() => setFailoverMode("forward_to_phone")}
+                    className="mt-1"
+                  />
+                  <div className="space-y-1">
+                    <p className="font-bold text-sm text-[var(--text-primary)] flex items-center gap-1.5">
+                      <PhoneForwarded className="h-4 w-4 text-emerald-600" />
+                      {lang === "es" ? "1. Desviar a Celular / Línea Alterna (Recomendado)" : "1. Forward to Manager Mobile (Recommended)"}
+                    </p>
+                    <p className="text-xs text-[var(--text-muted)]">
+                      {lang === "es"
+                        ? "Transfiere la llamada inmediatamente al celular del gerente o una segunda línea fija del local."
+                        : "Instantly transfers caller to manager's mobile or second store line."}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Option 2: Contingency Message */}
+              <div
+                onClick={() => setFailoverMode("contingency_message")}
+                className={`p-4 rounded-xl border cursor-pointer transition-all ${
+                  failoverMode === "contingency_message"
+                    ? "border-blue-600 bg-blue-50/20 ring-1 ring-blue-600"
+                    : "border-[var(--border-subtle)] bg-[var(--surface-card)] hover:border-[var(--border-default)]"
+                }`}
+              >
+                <div className="flex items-start gap-3">
+                  <input
+                    type="radio"
+                    name="failoverMode"
+                    checked={failoverMode === "contingency_message"}
+                    onChange={() => setFailoverMode("contingency_message")}
+                    className="mt-1"
+                  />
+                  <div className="space-y-1">
+                    <p className="font-bold text-sm text-[var(--text-primary)]">
+                      {lang === "es" ? "2. Mensaje de Contingencia Bilingüe" : "2. Bilingual Contingency Message"}
+                    </p>
+                    <p className="text-xs text-[var(--text-muted)]">
+                      {lang === "es"
+                        ? "Reproduce un aviso profesional indicando que las líneas están temporalmente ocupadas y avisa al dueño."
+                        : "Plays professional recording that lines are busy and alerts owner."}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Fallback Phone Input (when forward_to_phone selected) */}
+          {failoverMode === "forward_to_phone" && (
+            <div className="space-y-2">
+              <label className="text-xs font-bold text-[var(--text-secondary)] uppercase tracking-wider flex items-center justify-between">
+                <span>{lang === "es" ? "Teléfono de Respaldo (Formato E.164)" : "Backup Phone (E.164)"}</span>
+                <span className="text-[11px] font-normal text-[var(--text-muted)]">
+                  {lang === "es" ? "Ejemplo: +12135550199" : "Example: +12135550199"}
+                </span>
+              </label>
+              <input
+                type="tel"
+                value={failoverPhone}
+                onChange={(e) => {
+                  setFailoverPhone(e.target.value);
+                  setFailoverError(null);
+                }}
+                placeholder="+12135550199"
+                className={`w-full px-4 py-2.5 rounded-xl border text-sm font-mono focus:outline-none focus:ring-2 ${
+                  isAntiLoopViolation
+                    ? "border-red-500 bg-red-50/20 focus:ring-red-500 text-red-900"
+                    : "border-[var(--border-default)] bg-[var(--surface-canvas)] text-[var(--text-primary)] focus:ring-[var(--brand-accent)]"
+                }`}
+              />
+
+              {/* Real-time Anti-Loop Warning */}
+              {isAntiLoopViolation && (
+                <div className="p-3 rounded-xl bg-red-50 border border-red-200 text-red-700 text-xs flex items-start gap-2">
+                  <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5 text-red-600" />
+                  <div>
+                    <span className="font-bold">
+                      {lang === "es" ? "Anti-Bucle Activado: " : "Anti-Loop Guard: "}
+                    </span>
+                    {lang === "es"
+                      ? "Este número no puede coincidir con la línea principal del restaurante. Causaría un bucle infinito con el desvío *72. Por favor ingrese el celular del gerente o una segunda línea."
+                      : "Backup phone cannot match primary restaurant DID (*72 loop). Please enter an alternate number."}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Architecture Guarantee Info */}
+          <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 text-slate-700 text-[11px] leading-relaxed">
+            <span className="font-bold">🛡️ Arquitectura Anti-Correlación:</span> Este plan opera sobre la red global de <strong>Telnyx + Cloudflare Edge</strong>, 100% independiente de los servidores de AWS o Railway. Si alguna nube experimenta mantenimiento, tus comensales son rescatados en &lt;5 segundos.
+          </div>
+
+          {/* Form Actions */}
+          <div className="pt-4 border-t border-[var(--border-subtle)] flex items-center justify-between">
+            {failoverSaveSuccess && (
+              <span className="text-xs font-bold text-emerald-600 flex items-center gap-1">
+                <Check className="h-4 w-4" />
+                {lang === "es" ? "¡Plan de respaldo guardado exitosamente!" : "Backup plan saved successfully!"}
+              </span>
+            )}
+            {failoverError && (
+              <span className="text-xs font-bold text-red-600 flex items-center gap-1">
+                <AlertTriangle className="h-4 w-4" />
+                {failoverError}
+              </span>
+            )}
+            <div className="ml-auto">
+              <button
+                type="submit"
+                disabled={isSavingFailover || isAntiLoopViolation}
+                className="flex items-center gap-2 px-6 py-2.5 rounded-xl font-bold text-sm bg-slate-900 text-white hover:bg-slate-800 disabled:opacity-50 transition-colors shadow-sm"
+              >
+                <Save className="h-4 w-4" />
+                <span>{isSavingFailover ? "Guardando..." : lang === "es" ? "Guardar Plan de Respaldo" : "Save Backup Plan"}</span>
               </button>
             </div>
           </div>

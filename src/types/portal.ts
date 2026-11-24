@@ -138,3 +138,12 @@ export interface RestaurantBranding {
   brand_primary_color: string;
   preferred_language: "es" | "en";
 }
+
+export interface FailoverConfig {
+  restaurant_id: string;
+  restaurant_name: string;
+  primary_phone_e164: string;
+  failover_mode: "forward_to_phone" | "contingency_message";
+  failover_phone_e164: string | null;
+  updated_at?: string;
+}
