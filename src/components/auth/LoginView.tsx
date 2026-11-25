@@ -355,6 +355,7 @@ export const LoginView: React.FC<LoginViewProps> = ({
                     setErrorMessage(null);
                   }}
                   placeholder={lang === "es" ? "ej. esquivel" : "e.g. esquivel"}
+                  aria-describedby="store-code-help"
                   className="flex-1 px-3 py-2.5 rounded-xl bg-[var(--surface-muted)] border border-[var(--border-subtle)] text-sm font-semibold text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-orange-500"
                 />
                 <button
@@ -383,7 +384,10 @@ export const LoginView: React.FC<LoginViewProps> = ({
                   {lang === "es" ? "Buscar" : "Find"}
                 </button>
               </div>
-              <p className="text-[11px] text-[var(--text-muted)]">
+              <p
+                id="store-code-help"
+                className="text-[11px] text-[var(--text-muted)]"
+              >
                 {lang === "es"
                   ? "Escríbelo una sola vez; esta tablet lo recordará."
                   : "Enter it once; this tablet will remember it."}
