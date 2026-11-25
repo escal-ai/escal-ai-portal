@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState, useRef } from "react";
+import React, { useEffect, useState, useRef, useSyncExternalStore } from "react";
 import { Navbar } from "../components/Navbar";
 import { KdsBoard } from "../components/kds/KdsBoard";
 import { OwnerDashboard } from "../components/owner/OwnerDashboard";
@@ -45,7 +45,6 @@ import {
   switchRestaurantSession,
 } from "../lib/api-client";
 import { DEFAULT_RESTAURANT_ID } from "../lib/constants";
-import { IS_DEMO } from "../lib/app-env";
 import { exchangeDemoToken } from "../lib/api-client";
 import { PortalRole as DemoRole } from "../types/portal";
 import { DemoModeBanner } from "../components/demo/DemoModeBanner";
@@ -56,7 +55,15 @@ export default function PortalHomePage() {
   const [isAuthChecking, setIsAuthChecking] = useState<boolean>(true);
 
   const [role, setRole] = useState<PortalRole>("kitchen");
-  const [lang, setLang] = useState<"es" | "en">("es");
+  // Browser language is external state: read it without a setState-inside-effect,
+  // and keep the server snapshot at "es" so hydration never mismatches.
+  const detectedLang = useSyncExternalStore<"es" | "en">(
+    () => () => {},
+    () => (navigator.language.toLowerCase().startsWith("en") ? "en" : "es"),
+    () => "es"
+  );
+  const [langOverride, setLang] = useState<"es" | "en" | null>(null);
+  const lang: "es" | "en" = langOverride ?? detectedLang;
   const [isDark, setIsDark] = useState<boolean>(false);
 
   const [orders, setOrders] = useState<OrderTicket[]>([]);
@@ -125,16 +132,15 @@ export default function PortalHomePage() {
     void import("../lib/demo-tokens").then((mod) => setDemoTokens(mod.DEMO_TOKENS));
   }, []);
 
-  // 1. Initial Session & Language detection & Dark mode setup
+  // 1. Initial Session & Language detection & Dark mode setup.
+  //    Post-mount browser work is deferred to a microtask so the first paint is
+  //    never blocked by cascading renders.
   useEffect(() => {
+    void (async () => {
     const stored = getStoredSession();
     let shouldClearStoredForQuerySwitch = false;
 
     if (typeof window !== "undefined") {
-      const browserLang = navigator.language.toLowerCase();
-      if (browserLang.startsWith("en")) {
-        setLang("en");
-      }
       const params = new URLSearchParams(window.location.search);
       const paramRest =
         params.get("restaurant") ||
@@ -176,6 +182,7 @@ export default function PortalHomePage() {
       setRole(stored.role);
     }
     setIsAuthChecking(false);
+    })();
   }, []);
 
   useEffect(() => {
@@ -298,7 +305,9 @@ export default function PortalHomePage() {
   };
 
   useEffect(() => {
-    setLoading(true);
+    // The spinner is part of the very first paint of the KDS: showing it is the
+    // point of the effect. The rule targets feedback loops, not this one-shot.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     void refreshData();
 
     // 4. Real-time Server-Sent Events (SSE) Stream
@@ -623,7 +632,10 @@ export default function PortalHomePage() {
               {error}
             </div>
             <button
-              onClick={() => void refreshData()}
+              onClick={() => {
+                setLoading(true);
+                void refreshData();
+              }}
               className="px-4 py-2 rounded-xl text-xs font-bold bg-slate-900 text-white"
             >
               Reintentar

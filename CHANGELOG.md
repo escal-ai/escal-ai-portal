@@ -28,3 +28,16 @@ Separación demo/producción en el portal.
 - El portal demo consume `?demo_token=<firma>`: lo canjea por una sesión acotada a ese prospecto,
   la guarda y borra el token de la barra de direcciones para que no quede en el historial.
 - El enlace caduca en 7 días (lo firma el backend) y solo abre el tenant para el que se emitió.
+
+## v0.9.4-portal-quality (2026-11-25)
+
+- **Cero errores de ESLint** (antes 5 de reglas React 19): los dos `setState` en efectos se resolvieron
+  con `useSyncExternalStore` (idioma del navegador) y moviendo el spinner fuera del efecto; las dos
+  funciones usadas antes de declararse (`submitKitchenPin`, `loadInventory`) pasaron a declaraciones
+  hoisted; el reloj del KDS usa inicializador perezoso.
+- Quedan 2 excepciones documentadas (`eslint-disable-next-line` con motivo) para arranques únicos que
+  muestran spinner: son intencionales, no bucles de estado.
+- Limpieza de 8 imports y variables sin usar (`Bell`, `Plus`, `Flame`, `PhoneCall`, `Save`, `Building2`,
+  `ExternalLink`, `PortalRole`); el aviso del `useSyncExternalStore` de idioma ya no existe.
+- Warnings restantes: 3 `exhaustive-deps` (cambiarlos alteraría el comportamiento de polling/SSE, se
+  dejan conscientes) y 1 `<img>` que pide `next/image`.

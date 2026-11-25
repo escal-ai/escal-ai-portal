@@ -11,7 +11,6 @@ import {
   Check,
   Save,
   SlidersHorizontal,
-  Flame,
   ShieldCheck,
   AlertTriangle,
   PhoneForwarded,

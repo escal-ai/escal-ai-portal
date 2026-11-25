@@ -11,7 +11,6 @@ import {
   User,
   SlidersHorizontal,
   X,
-  Plus,
 } from "lucide-react";
 import { OrderTicket, OrderStatus, MenuItemAvailability } from "../../types/portal";
 
@@ -43,7 +42,7 @@ export const KdsBoard: React.FC<KdsBoardProps> = ({
 }) => {
   const [undoState, setUndoState] = useState<UndoAction | null>(null);
   const [show86Drawer, setShow86Drawer] = useState(false);
-  const [currentTime, setCurrentTime] = useState(Date.now());
+  const [currentTime, setCurrentTime] = useState<number>(() => Date.now());
 
   // Re-render timers every 10 seconds
   useEffect(() => {

@@ -147,10 +147,10 @@ export const LoginView: React.FC<LoginViewProps> = ({
     setErrorMessage(null);
   };
 
-  const submitKitchenPin = async (
+  async function submitKitchenPin(
     pinToVerify = pinDigits,
     targetRestaurantId = selectedRestaurantId
-  ) => {
+  ): Promise<void> {
     if (pinToVerify.length !== 4) {
       setErrorMessage(
         lang === "es"
@@ -180,7 +180,7 @@ export const LoginView: React.FC<LoginViewProps> = ({
     } finally {
       setIsLoading(false);
     }
-  };
+  }
 
   const handleOwnerSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

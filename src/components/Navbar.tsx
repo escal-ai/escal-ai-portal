@@ -2,7 +2,6 @@
 
 import React from "react";
 import {
-  Bell,
   Volume2,
   VolumeX,
   Sun,

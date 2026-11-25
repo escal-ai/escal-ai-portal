@@ -2,7 +2,6 @@
 
 import React, { useState } from "react";
 import {
-  PhoneCall,
   Shield,
   CheckCircle2,
   AlertTriangle,

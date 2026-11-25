@@ -3,14 +3,11 @@
 import React, { useEffect, useState } from "react";
 import {
   AlertTriangle,
-  Building2,
   Check,
   CheckCircle2,
   Copy,
-  ExternalLink,
   Phone,
   PhoneCall,
-  Save,
   ShieldCheck,
   Sparkles,
   UtensilsCrossed,
@@ -80,14 +77,7 @@ export const OnboardingWizardModal: React.FC<OnboardingWizardModalProps> = ({
     Boolean(cleanFailover) &&
     (cleanFailover === cleanPrimary || cleanFailover === cleanDid);
 
-  // Load Inventory when opening Step 2
-  useEffect(() => {
-    if (isOpen && step === 2) {
-      loadInventory();
-    }
-  }, [isOpen, step]);
-
-  const loadInventory = async () => {
+  async function loadInventory() {
     setIsLoadingInventory(true);
     setError(null);
     try {
@@ -105,7 +95,15 @@ export const OnboardingWizardModal: React.FC<OnboardingWizardModalProps> = ({
     } finally {
       setIsLoadingInventory(false);
     }
-  };
+  }
+
+  // Load Inventory when opening Step 2
+  useEffect(() => {
+    if (!isOpen || step !== 2) return;
+    // One-shot load triggered by opening the step; no state feedback loop here.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    void loadInventory();
+  }, [isOpen, step]);
 
   const handleNextStep1 = (e: React.FormEvent) => {
     e.preventDefault();
