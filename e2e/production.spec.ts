@@ -37,3 +37,25 @@ test.describe("portal de producción (solo lectura)", () => {
     expect(html).not.toMatch(/info@escal-ai\.com/i);
   });
 });
+
+test.describe("portal de producción: sin sesión no pide datos", () => {
+  test("no consulta pedidos ni abre el stream del KDS de un restaurante demo", async ({
+    page,
+  }) => {
+    const dataRequests: string[] = [];
+    page.on("request", (request) => {
+      const url = request.url();
+      if (url.includes("/api/restaurants/") || url.includes("/kds/stream")) {
+        dataRequests.push(url);
+      }
+    });
+
+    await page.goto("/");
+    await expect(page.getByText(/Cocina KDS|Kitchen KDS/i).first()).toBeVisible();
+    await page.waitForTimeout(3000);
+
+    // The public login page used to request orders and open an SSE stream with
+    // `token=undefined` for a hard-coded demo tenant on every visit.
+    expect(dataRequests).toEqual([]);
+  });
+});

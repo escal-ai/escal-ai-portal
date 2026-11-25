@@ -44,7 +44,6 @@ import {
   subscribeToKdsStream,
   switchRestaurantSession,
 } from "../lib/api-client";
-import { DEFAULT_RESTAURANT_ID } from "../lib/constants";
 import { exchangeDemoToken } from "../lib/api-client";
 import { DemoModeBanner } from "../components/demo/DemoModeBanner";
 import { chimeManager } from "../lib/sound-chime";
@@ -88,7 +87,11 @@ export default function PortalHomePage() {
   // (?demo_token=, 7-day TTL) or the store code — never from a token baked into
   // the bundle, so no usable session can ever ship to production.
   const currentToken = session?.token || "";
-  const currentRestaurantId = session?.restaurant_id || DEFAULT_RESTAURANT_ID;
+  // No session, no restaurant. Falling back to a hard-coded id used to make the
+  // public login page request orders (and open an SSE stream with
+  // `token=undefined`) for a demo tenant — 401s on every visit, and it leaked an
+  // internal restaurant id to anonymous visitors.
+  const currentRestaurantId = session?.restaurant_id ?? null;
   const currentRestaurantName =
     session?.restaurant_name || "Taquería y Birriería La Estrella";
 
@@ -214,6 +217,7 @@ export default function PortalHomePage() {
 
   // 3. Data Fetching & Polling Loop (Every 6 seconds)
   const refreshData = async () => {
+    if (!currentRestaurantId || !currentToken) return;
     try {
       if (role === "kitchen" || role === "owner") {
         const fetchedOrders = await fetchOrders(
@@ -299,6 +303,8 @@ export default function PortalHomePage() {
   };
 
   useEffect(() => {
+    if (!session || !currentRestaurantId || !currentToken) return;
+
     // The spinner is part of the very first paint of the KDS: showing it is the
     // point of the effect. The rule targets feedback loops, not this one-shot.
     // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -363,7 +369,7 @@ export default function PortalHomePage() {
       clearInterval(interval);
       setIsLiveStream(false);
     };
-  }, [role, currentToken, currentRestaurantId]);
+  }, [session, role, currentToken, currentRestaurantId]);
 
   // Handlers
   const handleLoginSuccess = (newSession: ActiveSession) => {
@@ -406,6 +412,7 @@ export default function PortalHomePage() {
     ticketId: string,
     nextStatus: OrderStatus
   ) => {
+    if (!currentRestaurantId) return;
     // Optimistic UI update
     setOrders((prev) =>
       prev.map((o) => (o.ticket_id === ticketId ? { ...o, status: nextStatus } : o))
@@ -426,6 +433,7 @@ export default function PortalHomePage() {
   };
 
   const handleToggleItem = async (itemId: string, available: boolean) => {
+    if (!currentRestaurantId) return;
     setMenuItems((prev) =>
       prev.map((i) => (i.id === itemId ? { ...i, available } : i))
     );
@@ -442,6 +450,7 @@ export default function PortalHomePage() {
     optionId: string,
     available: boolean
   ) => {
+    if (!currentRestaurantId) return;
     setMenuItems((prev) =>
       prev.map((item) => ({
         ...item,
@@ -467,11 +476,13 @@ export default function PortalHomePage() {
   };
 
   const handleUpdatePrepTime = async (minutes: number) => {
+    if (!currentRestaurantId) return;
     setDefaultPrepMinutes(minutes);
     await updatePrepTime(currentRestaurantId, minutes, currentToken);
   };
 
   const handleSaveBranding = async (newBranding: Partial<RestaurantBranding>) => {
+    if (!currentRestaurantId) return;
     const updated = await updateBranding(
       currentRestaurantId,
       newBranding,
@@ -484,6 +495,7 @@ export default function PortalHomePage() {
     failover_mode: "forward_to_phone" | "contingency_message";
     failover_phone_e164: string | null;
   }) => {
+    if (!currentRestaurantId) return;
     const updated = await updateFailoverConfig(
       currentRestaurantId,
       currentToken,
@@ -497,6 +509,7 @@ export default function PortalHomePage() {
     prepay_threshold_cents: number;
     prepay_expiry_minutes: number;
   }) => {
+    if (!currentRestaurantId) return;
     const updated = await updateStripePrepayConfig(
       currentRestaurantId,
       currentToken,
@@ -511,6 +524,7 @@ export default function PortalHomePage() {
   };
 
   const handleConnectStripe = async () => {
+    if (!currentRestaurantId) return;
     const connectUrl = await createStripeConnectUrl(
       currentRestaurantId,
       currentToken
@@ -519,6 +533,7 @@ export default function PortalHomePage() {
   };
 
   const handleDisconnectStripe = async () => {
+    if (!currentRestaurantId) return;
     const updated = await disconnectStripeAccount(
       currentRestaurantId,
       currentToken
@@ -528,6 +543,7 @@ export default function PortalHomePage() {
   };
 
   const handleResendPaymentSms = async (ticketId: string) => {
+    if (!currentRestaurantId) return;
     await resendOrderPaymentSms(currentRestaurantId, ticketId, currentToken);
   };
 
