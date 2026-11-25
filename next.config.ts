@@ -3,9 +3,11 @@ import type { NextConfig } from "next";
 /**
  * Baseline security headers.
  *
- * HSTS stays short and WITHOUT `includeSubDomains`: `status.escal-ai.com` has no
- * valid certificate today, and committing to includeSubDomains would make every
- * browser refuse to load it for a year.
+ * HSTS stays WITHOUT `includeSubDomains` and at one day: every current subdomain
+ * now has a valid certificate (status.escal-ai.com included, after its CNAME was
+ * pointed at the host that actually exists), but `includeSubDomains` is memorised by
+ * browsers for a year and one future internal host without TLS would break for
+ * everyone. One day is the step approved before that commitment.
  *
  * The CSP is report-only on purpose. Next.js injects inline scripts, so an
  * enforcing policy needs per-request nonces (which turns prerendered pages
@@ -22,7 +24,7 @@ const ENGINE_BASE = (
 const ENGINE_WS = ENGINE_BASE.replace(/^http/, "ws");
 
 const SECURITY_HEADERS = [
-  { key: "Strict-Transport-Security", value: "max-age=300" },
+  { key: "Strict-Transport-Security", value: "max-age=86400" },
   { key: "X-Content-Type-Options", value: "nosniff" },
   { key: "X-Frame-Options", value: "SAMEORIGIN" },
   { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
