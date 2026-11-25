@@ -16,8 +16,12 @@ const PORTALS = [
 
 for (const portal of PORTALS) {
   test(`sin violaciones críticas ni serias de accesibilidad: ${portal.name}`, async ({ page }) => {
-    await page.goto(portal.url);
-    await page.waitForLoadState("networkidle");
+    await page.goto(portal.url, { waitUntil: "domcontentloaded" });
+    // `networkidle` never fires here: the portal keeps a live orders stream open.
+    // Wait for the login content instead, which is what axe needs to see.
+    await expect(
+      page.getByText(/Cocina KDS|Kitchen KDS/i).first()
+    ).toBeVisible();
 
     const results = await new AxeBuilder({ page })
       .withTags(["wcag2a", "wcag2aa"])
