@@ -46,7 +46,6 @@ import {
 } from "../lib/api-client";
 import { DEFAULT_RESTAURANT_ID } from "../lib/constants";
 import { exchangeDemoToken } from "../lib/api-client";
-import { PortalRole as DemoRole } from "../types/portal";
 import { DemoModeBanner } from "../components/demo/DemoModeBanner";
 import { chimeManager } from "../lib/sound-chime";
 
@@ -79,19 +78,16 @@ export default function PortalHomePage() {
     paymentState: string;
   } | null>(null);
   const [callLogs, setCallLogs] = useState<CallLogEntry[]>([]);
-  // Demo fallback tokens are loaded as a separate chunk, and only on the demo
-  // deployment: the production bundle must not carry usable sessions.
-  const [demoTokens, setDemoTokens] = useState<Record<DemoRole, string> | null>(null);
-
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isLiveStream, setIsLiveStream] = useState<boolean>(false);
 
   const previousOrdersCountRef = useRef<number>(0);
 
-  // Active session. The demo fallback token exists ONLY on the demo deployment:
-  // in production an unauthenticated visitor must never inherit a working session.
-  const currentToken = session?.token || demoTokens?.[role] || "";
+  // Active session. Demo access comes from server-minted signed links
+  // (?demo_token=, 7-day TTL) or the store code — never from a token baked into
+  // the bundle, so no usable session can ever ship to production.
+  const currentToken = session?.token || "";
   const currentRestaurantId = session?.restaurant_id || DEFAULT_RESTAURANT_ID;
   const currentRestaurantName =
     session?.restaurant_name || "Taquería y Birriería La Estrella";
@@ -123,13 +119,6 @@ export default function PortalHomePage() {
       // Drop the token from the address bar so it does not linger in history.
       window.history.replaceState({}, "", window.location.pathname);
     });
-  }, []);
-
-  // 0. Demo-only fallback sessions. The guard compares the raw NEXT_PUBLIC var so
-  // the bundler folds it at build time and drops the import from production.
-  useEffect(() => {
-    if (process.env.NEXT_PUBLIC_APP_ENV !== "demo") return;
-    void import("../lib/demo-tokens").then((mod) => setDemoTokens(mod.DEMO_TOKENS));
   }, []);
 
   // 1. Initial Session & Language detection & Dark mode setup.
