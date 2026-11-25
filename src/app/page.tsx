@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useState, useRef, useSyncExternalStore } from "react";
+import { IS_DEMO } from "../lib/app-env";
 import { Navbar } from "../components/Navbar";
 import { KdsBoard } from "../components/kds/KdsBoard";
 import { OwnerDashboard } from "../components/owner/OwnerDashboard";
@@ -150,8 +151,8 @@ export default function PortalHomePage() {
           stored.restaurant_id.toLowerCase() === needle ||
           stored.restaurant_id.toLowerCase().includes(needle) ||
           stored.restaurant_name.toLowerCase().includes(needle) ||
-          (needle === "1002" && stored.restaurant_id.includes("esquivel")) ||
-          (needle === "1001" && stored.restaurant_id.includes("estrella"));
+          (IS_DEMO && needle === "1002" && stored.restaurant_id.includes("esquivel")) ||
+          (IS_DEMO && needle === "1001" && stored.restaurant_id.includes("estrella"));
         if (!matchesStored) {
           clearSession();
           shouldClearStoredForQuerySwitch = true;

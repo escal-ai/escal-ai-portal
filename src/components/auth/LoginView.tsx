@@ -21,6 +21,7 @@ import {
   resolveTenant,
 } from "../../lib/api-client";
 import { IS_DEMO } from "../../lib/app-env";
+import { DEMO_SHORTCUTS } from "../../lib/demo-shortcuts";
 
 interface LoginViewProps {
   onLoginSuccess: (session: ActiveSession) => void;
@@ -94,8 +95,8 @@ export const LoginView: React.FC<LoginViewProps> = ({
                 t.restaurant_id.toLowerCase() === needle ||
                 t.restaurant_id.toLowerCase().includes(needle) ||
                 t.name.toLowerCase().includes(needle) ||
-                (needle === "1002" && t.restaurant_id.includes("esquivel")) ||
-                (needle === "1001" && t.restaurant_id.includes("estrella"))
+                (IS_DEMO && needle === "1002" && t.restaurant_id.includes("esquivel")) ||
+                (IS_DEMO && needle === "1001" && t.restaurant_id.includes("estrella"))
             );
             if (found) {
               matchedId = found.restaurant_id;
@@ -220,18 +221,12 @@ export const LoginView: React.FC<LoginViewProps> = ({
     }
   };
 
-  // Demo shortcuts: kitchen PINs only. Owner credentials are never embedded in the
-  // bundle — an owner logs in with the password they were given out of band.
-  const fillEstrellaDemo = () => {
-    setSelectedRestaurantId("rst_taqueria_estrella_la");
-    setPinDigits("1234");
-    void submitKitchenPin("1234");
-  };
-
-  const fillPulgarcitoDemo = () => {
-    setSelectedRestaurantId("rst_pupuser_a_y_taquer_a_el_pulgarcito");
-    setPinDigits("5678");
-    void submitKitchenPin("5678");
+  // Demo shortcuts come from the demo deployment's env (see lib/demo-shortcuts):
+  // baking the PINs here shipped them in the production bundle as well.
+  const applyDemoShortcut = (restaurantId: string, pin: string) => {
+    setSelectedRestaurantId(restaurantId);
+    setPinDigits(pin);
+    void submitKitchenPin(pin, restaurantId);
   };
 
   return (
@@ -569,20 +564,18 @@ export const LoginView: React.FC<LoginViewProps> = ({
               </span>
             </span>
             <div className="flex flex-wrap gap-1.5">
-              <button
-                type="button"
-                onClick={fillEstrellaDemo}
-                className="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-[var(--surface-muted)] hover:bg-[var(--border-subtle)] text-[var(--text-secondary)] border border-[var(--border-subtle)] transition-colors"
-              >
-                🌮 La Estrella (PIN: 1234)
-              </button>
-              <button
-                type="button"
-                onClick={fillPulgarcitoDemo}
-                className="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-[var(--surface-muted)] hover:bg-[var(--border-subtle)] text-[var(--text-secondary)] border border-[var(--border-subtle)] transition-colors"
-              >
-                🫓 El Pulgarcito (PIN: 5678)
-              </button>
+              {DEMO_SHORTCUTS.map((shortcut) => (
+                <button
+                  key={shortcut.restaurant_id}
+                  type="button"
+                  onClick={() => {
+                    applyDemoShortcut(shortcut.restaurant_id, shortcut.pin);
+                  }}
+                  className="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-[var(--surface-muted)] hover:bg-[var(--border-subtle)] text-[var(--text-secondary)] border border-[var(--border-subtle)] transition-colors"
+                >
+                  {shortcut.label} (PIN: {shortcut.pin})
+                </button>
+              ))}
             </div>
           </div>
           )}

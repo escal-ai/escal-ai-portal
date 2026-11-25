@@ -42,7 +42,9 @@ export const OnboardingWizardModal: React.FC<OnboardingWizardModalProps> = ({
   const [zip, setZip] = useState("90033");
   const [primaryPhone, setPrimaryPhone] = useState("");
   const [failoverPhone, setFailoverPhone] = useState("");
-  const [kitchenPin, setKitchenPin] = useState("1234");
+  // Never pre-filled: an operator who forgets to change it would create a restaurant
+  // with the same PIN as every demo.
+  const [kitchenPin, setKitchenPin] = useState("");
   const [taxRateBps, setTaxRateBps] = useState(950);
   const [menuTemplate, setMenuTemplate] = useState<"tacos_birria" | "pupuseria">("tacos_birria");
 
@@ -271,7 +273,7 @@ export const OnboardingWizardModal: React.FC<OnboardingWizardModalProps> = ({
                     maxLength={4}
                     value={kitchenPin}
                     onChange={(e) => setKitchenPin(e.target.value)}
-                    placeholder="1234"
+                    placeholder="••••"
                     className="w-full mt-1 px-3 py-2 rounded-xl border border-[var(--border-default)] bg-[var(--surface-canvas)] text-sm font-mono text-center tracking-widest text-[var(--text-primary)] focus:ring-2 focus:ring-amber-500 focus:outline-none"
                   />
                 </div>
