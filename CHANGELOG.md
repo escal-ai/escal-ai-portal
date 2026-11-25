@@ -1,3 +1,14 @@
+## v0.10.0-portal-e2e-a11y
+
+- Suite E2E con Playwright contra los portales desplegados: producción en solo lectura (no anuncia la
+  línea de prueba ni los atajos de demo, pide código de tienda, no filtra correos de owner en el HTML) y
+  demo completo (aviso de entorno, línea de prueba y login de cocina con atajo).
+- Escaneo de accesibilidad con axe en ambas pantallas de login. Corregidas dos violaciones **críticas**
+  (el botón de borrar del teclado no tenía nombre accesible; el selector de restaurante no tenía
+  etiqueta asociada) y dos fallos de contraste que quedaban por debajo de AA.
+- El gate bloquea ahora violaciones críticas y serias; hoy ambas pantallas están en cero.
+- Script `npm run e2e`.
+
 # Changelog — escal-ai-portal
 
 ## v0.9.5-portal-no-demo-tokens (2026-11-25)
