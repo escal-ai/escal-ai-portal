@@ -47,8 +47,8 @@ export const LoginView: React.FC<LoginViewProps> = ({
   const [pinDigits, setPinDigits] = useState<string>("");
 
   // Owner credentials state
-  const [email, setEmail] = useState<string>("owner@estrella.com");
-  const [password, setPassword] = useState<string>("Estrella2026!");
+  const [email, setEmail] = useState<string>("");
+  const [password, setPassword] = useState<string>("");
 
   const [isLoading, setIsLoading] = useState<boolean>(false);
   // Production deployments do not publish the tenant directory: a station finds
@@ -216,33 +216,18 @@ export const LoginView: React.FC<LoginViewProps> = ({
     }
   };
 
-  // Fast Demo Helpers
+  // Demo shortcuts: kitchen PINs only. Owner credentials are never embedded in the
+  // bundle — an owner logs in with the password they were given out of band.
   const fillEstrellaDemo = () => {
     setSelectedRestaurantId("rst_taqueria_estrella_la");
-    if (activeTab === "kitchen") {
-      setPinDigits("1234");
-      void submitKitchenPin("1234");
-    } else {
-      setEmail("owner@estrella.com");
-      setPassword("Estrella2026!");
-    }
+    setPinDigits("1234");
+    void submitKitchenPin("1234");
   };
 
   const fillPulgarcitoDemo = () => {
     setSelectedRestaurantId("rst_pupuser_a_y_taquer_a_el_pulgarcito");
-    if (activeTab === "kitchen") {
-      setPinDigits("5678");
-      void submitKitchenPin("5678");
-    } else {
-      setEmail("owner@pulgarcito.com");
-      setPassword("Pulgarcito2026!");
-    }
-  };
-
-  const fillAdminDemo = () => {
-    setActiveTab("owner");
-    setEmail("info@escal-ai.com");
-    setPassword("EscalAi2026!");
+    setPinDigits("5678");
+    void submitKitchenPin("5678");
   };
 
   return (
@@ -588,13 +573,6 @@ export const LoginView: React.FC<LoginViewProps> = ({
                 className="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-[var(--surface-muted)] hover:bg-[var(--border-subtle)] text-[var(--text-secondary)] border border-[var(--border-subtle)] transition-colors"
               >
                 🫓 El Pulgarcito (PIN: 5678)
-              </button>
-              <button
-                type="button"
-                onClick={fillAdminDemo}
-                className="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-[var(--surface-muted)] hover:bg-[var(--border-subtle)] text-[var(--text-secondary)] border border-[var(--border-subtle)] transition-colors"
-              >
-                👑 Admin Jorge
               </button>
             </div>
           </div>
