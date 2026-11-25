@@ -19,6 +19,7 @@ import {
   loginWithKitchenPin,
   loginWithCredentials,
 } from "../../lib/api-client";
+import { IS_DEMO } from "../../lib/app-env";
 
 interface LoginViewProps {
   onLoginSuccess: (session: ActiveSession) => void;
@@ -57,11 +58,13 @@ export const LoginView: React.FC<LoginViewProps> = ({
       if (list.length > 0) {
         setTenants(list);
 
-        // Check for URL GET parameters: ?restaurant=..., ?r=..., ?code=..., ?pin=...
+        // Direct links (?restaurant=, ?pin=) are a SALES feature: a prospect opens
+        // the demo straight from WhatsApp. In production the query string is
+        // ignored so no PIN travels through URLs or chat logs.
         let matchedId: string | null = null;
         let queryPin: string | null = null;
 
-        if (typeof window !== "undefined") {
+        if (IS_DEMO && typeof window !== "undefined") {
           const params = new URLSearchParams(window.location.search);
           const paramRest =
             params.get("restaurant") ||
@@ -482,6 +485,7 @@ export const LoginView: React.FC<LoginViewProps> = ({
           )}
 
           {/* Quick Demo Pre-fill Pills */}
+          {IS_DEMO && (
           <div className="pt-2 border-t border-[var(--border-subtle)] space-y-2">
             <span className="text-[11px] font-semibold text-[var(--text-muted)] flex items-center gap-1">
               <Sparkles className="h-3 w-3 text-amber-500" />
@@ -515,6 +519,7 @@ export const LoginView: React.FC<LoginViewProps> = ({
               </button>
             </div>
           </div>
+          )}
         </div>
 
         {/* Footer Security Badge */}
