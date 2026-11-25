@@ -282,8 +282,13 @@ export default function PortalHomePage() {
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       if (msg.includes("401")) {
-        clearSession();
-        setSession(null);
+        // Only drop a session that actually existed: a 401 from a request that
+        // started before the session was restored (or before a signed demo link
+        // resolved) must not wipe the one that just landed.
+        if (session) {
+          clearSession();
+          setSession(null);
+        }
         setError(null);
         return;
       }

@@ -273,7 +273,8 @@ export const LoginView: React.FC<LoginViewProps> = ({
           </button>
         </div>
 
-        {/* Live Demo Callout for Prospective Clients */}
+        {/* Live demo callout: sales material, never shown on the production portal. */}
+        {IS_DEMO && (
         <div className="bg-amber-500/10 border-b border-amber-500/20 px-6 py-2.5 flex items-center justify-between text-xs">
           <div className="flex items-center gap-2">
             <span className="relative flex h-2 w-2">
@@ -294,6 +295,7 @@ export const LoginView: React.FC<LoginViewProps> = ({
             PIN: 1234
           </span>
         </div>
+        )}
 
         {/* Tab Switcher: Cocina KDS vs Dueño */}
         <div className="p-3 bg-[var(--surface-muted)] border-b border-[var(--border-subtle)] flex gap-2">
