@@ -13,8 +13,10 @@ import { defineConfig, devices } from "@playwright/test";
  */
 export default defineConfig({
   testDir: "./e2e",
-  timeout: 45_000,
-  expect: { timeout: 15_000 },
+  // Live portals over the public internet: occasionally slow, and a flaky gate
+  // gets ignored. The retry is there for genuine network hiccups, not for bugs.
+  timeout: 60_000,
+  expect: { timeout: 20_000 },
   fullyParallel: true,
   retries: 1,
   reporter: [["list"]],
