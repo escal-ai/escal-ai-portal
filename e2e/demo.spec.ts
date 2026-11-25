@@ -26,7 +26,12 @@ test.describe("portal demo", () => {
 
     // The kitchen session is the only interactive login this suite performs.
     await expect(page.getByText(/KITCHEN DISPLAY SYSTEM/i)).toBeVisible();
-    await expect(page.getByText(/No pending orders to cook/i)).toBeVisible();
+    // Deliberately not asserting "no pending orders": a live demo may hold real
+    // tickets from a sales call, and that would fail a test about logging in. What
+    // matters is that the session works: the board renders and the token is stored.
+    await expect(
+      page.getByText(/No pending orders to cook|PENDING|EN COCINA|Ready for pickup/i).first()
+    ).toBeVisible();
 
     const sessionKeys = await page.evaluate(() => Object.keys(window.localStorage));
     expect(sessionKeys).toContain("escal_ai_portal_session_v1");
