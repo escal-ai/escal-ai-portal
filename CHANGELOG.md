@@ -1,5 +1,18 @@
 # Changelog — escal-ai-portal
 
+## v0.9.5-portal-no-demo-tokens (2026-11-25)
+
+### Seguridad
+- Eliminado `src/lib/demo-tokens.ts` y el fallback `demoTokens` de `page.tsx`. Los tokens demo
+  firmados seguían viajando en un chunk diferido del build (presente también en producción). Ahora
+  el acceso demo llega solo por link firmado del backend (`?demo_token=`, TTL 7 días) o por código
+  de tienda.
+- Verificado sobre el build desplegado en `app.escal-ai.com`: 0 chunks con `DEMO_TOKENS`.
+
+### Notas
+- Desplegado con `serviceInstanceDeployV2` (commit `f8d6d32`) porque el servicio no tiene
+  *deployment trigger*: la GitHub App de Railway no tiene acceso a este repositorio.
+
 ## v0.9.0-demo-gating (2026-11-25)
 
 Separación demo/producción en el portal.
