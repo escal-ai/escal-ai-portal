@@ -46,6 +46,7 @@ import {
 } from "../lib/api-client";
 import { DEFAULT_RESTAURANT_ID } from "../lib/constants";
 import { IS_DEMO } from "../lib/app-env";
+import { exchangeDemoToken } from "../lib/api-client";
 import { PortalRole as DemoRole } from "../types/portal";
 import { DemoModeBanner } from "../components/demo/DemoModeBanner";
 import { chimeManager } from "../lib/sound-chime";
@@ -87,6 +88,35 @@ export default function PortalHomePage() {
   const currentRestaurantId = session?.restaurant_id || DEFAULT_RESTAURANT_ID;
   const currentRestaurantName =
     session?.restaurant_name || "Taquería y Birriería La Estrella";
+
+  // 0a. Signed demo link: ?demo_token=<jwt> opens exactly one prospect demo.
+  useEffect(() => {
+    if (process.env.NEXT_PUBLIC_APP_ENV !== "demo") return;
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    const demoToken = params.get("demo_token");
+    if (!demoToken) return;
+
+    void exchangeDemoToken(demoToken).then((result) => {
+      if (!result.ok) {
+        setError(result.error);
+        return;
+      }
+      const session: ActiveSession = {
+        token: result.token,
+        role: result.role,
+        restaurant_id: result.restaurant.restaurant_id,
+        restaurant_name: result.restaurant.name,
+        available_restaurants: [
+          { restaurant_id: result.restaurant.restaurant_id, name: result.restaurant.name },
+        ],
+      };
+      saveSession(session);
+      setSession(session);
+      // Drop the token from the address bar so it does not linger in history.
+      window.history.replaceState({}, "", window.location.pathname);
+    });
+  }, []);
 
   // 0. Demo-only fallback sessions. The guard compares the raw NEXT_PUBLIC var so
   // the bundler folds it at build time and drops the import from production.

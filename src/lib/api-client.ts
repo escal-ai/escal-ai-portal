@@ -301,6 +301,48 @@ export async function fetchPublicTenants(code?: string): Promise<
 }
 
 /**
+ * Exchanges a signed demo link (`?demo_token=`) for a scoped session.
+ * Demo deployments only: the backend answers 404 everywhere else.
+ */
+export async function exchangeDemoToken(token: string): Promise<
+  | {
+      ok: true;
+      token: string;
+      role: "owner" | "kitchen" | "support_latam";
+      restaurant: { restaurant_id: string; name: string };
+      expires_at: string;
+    }
+  | { ok: false; error: string }
+> {
+  try {
+    const res = await fetch(
+      `${API_BASE_URL}/api/auth/demo-session?token=${encodeURIComponent(token)}`,
+      { cache: "no-store" }
+    );
+    const data = (await res.json()) as {
+      ok: boolean;
+      token?: string;
+      role?: "owner" | "kitchen" | "support_latam";
+      restaurant?: { restaurant_id: string; name: string };
+      expires_at?: string;
+      error?: string;
+    };
+    if (!res.ok || !data.ok || !data.token || !data.role || !data.restaurant) {
+      return { ok: false, error: data.error ?? "Enlace de demostración inválido" };
+    }
+    return {
+      ok: true,
+      token: data.token,
+      role: data.role,
+      restaurant: data.restaurant,
+      expires_at: data.expires_at ?? "",
+    };
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : String(err) };
+  }
+}
+
+/**
  * Resolves ONE tenant from a store code (`?restaurant=`, `?code=`, DTMF code or
  * the restaurant id). Production deployments never publish the full directory,
  * so this is how a client's tablet finds its own restaurant the first time.

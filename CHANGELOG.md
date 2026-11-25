@@ -22,3 +22,9 @@ Separación demo/producción en el portal.
 ### Verificación
 - `next build` verde en `NEXT_PUBLIC_APP_ENV=production` y `=demo`.
 - ESLint: sin errores nuevos (quedan 4 preexistentes de React 19, plan 9.5).
+
+## v0.9.3-demo-links (2026-11-25)
+
+- El portal demo consume `?demo_token=<firma>`: lo canjea por una sesión acotada a ese prospecto,
+  la guarda y borra el token de la barra de direcciones para que no quede en el historial.
+- El enlace caduca en 7 días (lo firma el backend) y solo abre el tenant para el que se emitió.
