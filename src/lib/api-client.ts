@@ -276,11 +276,12 @@ export function subscribeToKdsStream(
   };
 }
 
-export async function fetchPublicTenants(): Promise<
+export async function fetchPublicTenants(code?: string): Promise<
   Array<{ restaurant_id: string; name: string; city: string; phone_e164: string }>
 > {
   try {
-    const res = await fetch(`${API_BASE_URL}/api/auth/tenants`, {
+    const query = code ? `?code=${encodeURIComponent(code)}` : "";
+    const res = await fetch(`${API_BASE_URL}/api/auth/tenants${query}`, {
       cache: "no-store",
     });
     if (!res.ok) return [];
@@ -296,6 +297,36 @@ export async function fetchPublicTenants(): Promise<
     return data.tenants ?? [];
   } catch {
     return [];
+  }
+}
+
+/**
+ * Resolves ONE tenant from a store code (`?restaurant=`, `?code=`, DTMF code or
+ * the restaurant id). Production deployments never publish the full directory,
+ * so this is how a client's tablet finds its own restaurant the first time.
+ */
+export async function resolveTenant(
+  code: string
+): Promise<
+  | { ok: true; tenant: { restaurant_id: string; name: string; city: string; phone_e164: string } }
+  | { ok: false; error: string }
+> {
+  try {
+    const res = await fetch(
+      `${API_BASE_URL}/api/auth/tenant?code=${encodeURIComponent(code)}`,
+      { cache: "no-store" }
+    );
+    const data = (await res.json()) as {
+      ok: boolean;
+      tenant?: { restaurant_id: string; name: string; city: string; phone_e164: string };
+      error?: string;
+    };
+    if (!res.ok || !data.tenant) {
+      return { ok: false, error: data.error ?? "Restaurante no encontrado" };
+    }
+    return { ok: true, tenant: data.tenant };
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : String(err) };
   }
 }
 

@@ -18,6 +18,7 @@ import {
   fetchPublicTenants,
   loginWithKitchenPin,
   loginWithCredentials,
+  resolveTenant,
 } from "../../lib/api-client";
 import { IS_DEMO } from "../../lib/app-env";
 
@@ -50,11 +51,23 @@ export const LoginView: React.FC<LoginViewProps> = ({
   const [password, setPassword] = useState<string>("Estrella2026!");
 
   const [isLoading, setIsLoading] = useState<boolean>(false);
+  // Production deployments do not publish the tenant directory: a station finds
+  // its own restaurant with a store code, remembered on the device afterwards.
+  const [storeCode, setStoreCode] = useState<string>("");
+  const [isLookingUp, setIsLookingUp] = useState<boolean>(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   useEffect(() => {
     async function loadTenants() {
-      const list = await fetchPublicTenants();
+      const storedCode =
+        typeof window !== "undefined"
+          ? window.localStorage.getItem("escal_store_code") ?? ""
+          : "";
+      let list = await fetchPublicTenants(IS_DEMO ? undefined : storedCode);
+      if (list.length === 0 && storedCode) {
+        const resolved = await resolveTenant(storedCode);
+        if (resolved.ok) list = [resolved.tenant];
+      }
       if (list.length > 0) {
         setTenants(list);
 
@@ -320,6 +333,65 @@ export const LoginView: React.FC<LoginViewProps> = ({
         {/* Body Content */}
         <div className="p-6 space-y-6">
           {/* Restaurant Selector Dropdown */}
+          {/* Store code lookup (production only: the directory is not public) */}
+          {tenants.length === 0 && (
+            <div className="space-y-1.5">
+              <label
+                htmlFor="store-code"
+                className="text-xs font-bold text-[var(--text-muted)] uppercase tracking-wider flex items-center gap-1.5"
+              >
+                <Building2 className="h-3.5 w-3.5" />
+                <span>{lang === "es" ? "Código de tienda" : "Store code"}</span>
+              </label>
+              <div className="flex gap-2">
+                <input
+                  id="store-code"
+                  type="text"
+                  inputMode="text"
+                  autoComplete="off"
+                  value={storeCode}
+                  onChange={(e) => {
+                    setStoreCode(e.target.value);
+                    setErrorMessage(null);
+                  }}
+                  placeholder={lang === "es" ? "ej. esquivel" : "e.g. esquivel"}
+                  className="flex-1 px-3 py-2.5 rounded-xl bg-[var(--surface-muted)] border border-[var(--border-subtle)] text-sm font-semibold text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-orange-500"
+                />
+                <button
+                  type="button"
+                  disabled={isLookingUp || storeCode.trim().length === 0}
+                  onClick={async () => {
+                    setIsLookingUp(true);
+                    const resolved = await resolveTenant(storeCode.trim());
+                    if (resolved.ok) {
+                      setTenants([resolved.tenant]);
+                      setSelectedRestaurantId(resolved.tenant.restaurant_id);
+                      if (typeof window !== "undefined") {
+                        window.localStorage.setItem(
+                          "escal_store_code",
+                          storeCode.trim()
+                        );
+                      }
+                      setErrorMessage(null);
+                    } else {
+                      setErrorMessage(resolved.error);
+                    }
+                    setIsLookingUp(false);
+                  }}
+                  className="px-4 rounded-xl bg-orange-600 text-white text-xs font-bold disabled:opacity-50"
+                >
+                  {lang === "es" ? "Buscar" : "Find"}
+                </button>
+              </div>
+              <p className="text-[11px] text-[var(--text-muted)]">
+                {lang === "es"
+                  ? "Escríbelo una sola vez; esta tablet lo recordará."
+                  : "Enter it once; this tablet will remember it."}
+              </p>
+            </div>
+          )}
+
+          {tenants.length > 0 && (
           <div className="space-y-1.5">
             <label className="text-xs font-bold text-[var(--text-muted)] uppercase tracking-wider flex items-center gap-1.5">
               <Building2 className="h-3.5 w-3.5" />
@@ -341,6 +413,7 @@ export const LoginView: React.FC<LoginViewProps> = ({
               ))}
             </select>
           </div>
+          )}
 
           {errorMessage && (
             <div className="p-3.5 rounded-2xl bg-red-50 text-red-800 border border-red-200 text-xs font-semibold flex items-center gap-2">
