@@ -271,7 +271,7 @@ export const LoginView: React.FC<LoginViewProps> = ({
             </span>
             <a
               href="tel:+12137760006"
-              className="font-black text-amber-600 dark:text-amber-400 hover:underline tracking-tight"
+              className="font-black text-amber-800 dark:text-amber-400 hover:underline tracking-tight"
             >
               +1 (213) 776-0006
             </a>
@@ -459,7 +459,7 @@ export const LoginView: React.FC<LoginViewProps> = ({
                 <button
                   type="button"
                   onClick={handleKeypadClear}
-                  className="h-14 rounded-2xl bg-[var(--surface-muted)] hover:bg-red-50 text-xs font-bold text-red-600 border border-[var(--border-subtle)] active:scale-95 transition-all flex items-center justify-center select-none"
+                  className="h-14 rounded-2xl bg-[var(--surface-muted)] hover:bg-red-50 text-xs font-bold text-red-700 border border-[var(--border-subtle)] active:scale-95 transition-all flex items-center justify-center select-none"
                 >
                   {lang === "es" ? "Borrar" : "Clear"}
                 </button>
