@@ -369,6 +369,10 @@ export default function PortalHomePage() {
       clearInterval(interval);
       setIsLiveStream(false);
     };
+    // refreshData is deliberately not a dependency: it is recreated on every render,
+    // so listing it would tear down and reopen the SSE stream in a loop. The effect
+    // must re-run only when the session it streams for actually changes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session, role, currentToken, currentRestaurantId]);
 
   // Handlers

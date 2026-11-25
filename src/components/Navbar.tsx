@@ -63,6 +63,10 @@ export const Navbar: React.FC<NavbarProps> = ({
         {/* Left: Brand / Restaurant name */}
         <div className="flex items-center gap-3">
           {branding?.brand_logo_url ? (
+            // The logo is a URL each restaurant sets for itself, so the host is not
+            // known at build time and next/image would need a wildcard allow-list for
+            // every customer domain. A plain img keeps that freedom.
+            // eslint-disable-next-line @next/next/no-img-element
             <img
               src={branding.brand_logo_url}
               alt="Logo"

@@ -122,6 +122,10 @@ export const LoginView: React.FC<LoginViewProps> = ({
       }
     }
     void loadTenants();
+    // Mount-only bootstrap: it consumes ?restaurant/?pin from the URL exactly once and
+    // signs in with the demo shortcut. Adding selectedRestaurantId or submitKitchenPin
+    // would re-run it on every keystroke and re-submit the PIN in a loop.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Handlers for Kitchen Keypad

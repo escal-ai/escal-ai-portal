@@ -100,9 +100,11 @@ export const OnboardingWizardModal: React.FC<OnboardingWizardModalProps> = ({
   // Load Inventory when opening Step 2
   useEffect(() => {
     if (!isOpen || step !== 2) return;
-    // One-shot load triggered by opening the step; no state feedback loop here.
+    // One-shot load triggered by opening the step. loadInventory is recreated on
+    // every render, so listing it below would refetch on each keystroke of the form.
     // eslint-disable-next-line react-hooks/set-state-in-effect
     void loadInventory();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, step]);
 
   const handleNextStep1 = (e: React.FormEvent) => {

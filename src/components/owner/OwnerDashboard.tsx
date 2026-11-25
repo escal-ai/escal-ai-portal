@@ -86,7 +86,6 @@ export const OwnerDashboard: React.FC<OwnerDashboardProps> = ({
     "roi" | "operations" | "branding" | "failover" | "payments"
   >(initialTab ?? "roi");
   const [isOnboardingOpen, setIsOnboardingOpen] = useState(false);
-  const [prepTimeInput, setPrepTimeInput] = useState(defaultPrepMinutes);
   const [logoInput, setLogoInput] = useState(branding?.brand_logo_url || "");
   const [colorInput, setColorInput] = useState(branding?.brand_primary_color || "#c2410c");
   const [langPref, setLangPref] = useState<"es" | "en">(branding?.preferred_language || "es");
@@ -379,7 +378,6 @@ export const OwnerDashboard: React.FC<OwnerDashboardProps> = ({
                 <button
                   key={mins}
                   onClick={() => {
-                    setPrepTimeInput(mins);
                     void onUpdatePrepTime(mins);
                   }}
                   className={`px-5 py-2.5 rounded-xl font-bold text-sm transition-all ${
