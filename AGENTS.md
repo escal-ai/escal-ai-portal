@@ -24,3 +24,14 @@ desacoplada, caché explícita y sus propias pruebas E2E.
 
 `e2e/production.spec.ts` hace cumplir la regla: falla si aparece cualquier petición a
 `/api/restaurants/*` o al stream del KDS antes de iniciar sesión.
+
+## CSP y separación de entornos
+
+`connect-src` se deriva de `NEXT_PUBLIC_ENGINE_API_URL`, la misma variable que usa el bundle del cliente. Nunca
+listar los dos motores: permitir que el portal de producción llame a la API de demo (y al revés) anula la
+separación que sostiene toda la plataforma. Verificación rápida tras cada despliegue:
+
+```
+curl -sD - -o /dev/null https://app.escal-ai.com | grep -o "connect-src[^;]*"   # solo el motor de producción
+curl -sD - -o /dev/null https://demo.escal-ai.com | grep -o "connect-src[^;]*"  # solo demo-api
+```
