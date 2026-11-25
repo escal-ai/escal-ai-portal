@@ -384,11 +384,15 @@ export const LoginView: React.FC<LoginViewProps> = ({
 
           {tenants.length > 0 && (
           <div className="space-y-1.5">
-            <label className="text-xs font-bold text-[var(--text-muted)] uppercase tracking-wider flex items-center gap-1.5">
-              <Building2 className="h-3.5 w-3.5" />
+            <label
+              htmlFor="demo-restaurant-select"
+              className="text-xs font-bold text-[var(--text-muted)] uppercase tracking-wider flex items-center gap-1.5"
+            >
+              <Building2 className="h-3.5 w-3.5" aria-hidden="true" />
               <span>{lang === "es" ? "Restaurante" : "Restaurant"}</span>
             </label>
             <select
+              id="demo-restaurant-select"
               value={selectedRestaurantId}
               onChange={(e) => {
                 setSelectedRestaurantId(e.target.value);
@@ -469,9 +473,10 @@ export const LoginView: React.FC<LoginViewProps> = ({
                 <button
                   type="button"
                   onClick={handleKeypadBackspace}
+                  aria-label={lang === "es" ? "Borrar último dígito" : "Delete last digit"}
                   className="h-14 rounded-2xl bg-[var(--surface-muted)] hover:bg-slate-200 dark:hover:bg-slate-700 text-xs font-bold text-[var(--text-secondary)] border border-[var(--border-subtle)] active:scale-95 transition-all flex items-center justify-center select-none"
                 >
-                  <Delete className="h-5 w-5" />
+                  <Delete className="h-5 w-5" aria-hidden="true" />
                 </button>
               </div>
 
