@@ -41,7 +41,7 @@ export const LoginView: React.FC<LoginViewProps> = ({
     Array<{ restaurant_id: string; name: string; city: string; phone_e164: string }>
   >([]);
   const [selectedRestaurantId, setSelectedRestaurantId] = useState<string>(
-    "rst_birrieria_esquivel"
+    "rst_taqueria_estrella_la"
   );
 
   // Kitchen PIN state (4 digits)
