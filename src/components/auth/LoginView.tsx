@@ -12,7 +12,6 @@ import {
   Sparkles,
   ShieldCheck,
   Building2,
-  Phone,
 } from "lucide-react";
 import { ActiveSession } from "../../lib/auth-session";
 import {
@@ -580,26 +579,6 @@ export const LoginView: React.FC<LoginViewProps> = ({
             </div>
           </div>
           )}
-        </div>
-
-        {/* Official Escal-AI Receptionist & Sales Contact */}
-        <div className="px-6 py-3 bg-[var(--surface-base)] border-t border-[var(--border-subtle)] flex flex-wrap items-center justify-between gap-2 text-xs">
-          <a
-            href="tel:+12137760006"
-            className="inline-flex items-center gap-1.5 font-semibold text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors"
-          >
-            <Phone className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
-            <span>{lang === "es" ? "Recepción Escal-AI:" : "Escal-AI Reception:"}</span>
-            <span className="font-bold text-[var(--text-primary)]">+1 (213) 776-0006</span>
-          </a>
-          <a
-            href="tel:+12139461919"
-            className="inline-flex items-center gap-1.5 font-semibold text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors"
-          >
-            <Phone className="h-3.5 w-3.5 text-amber-600 shrink-0" />
-            <span>{lang === "es" ? "Ventas:" : "Sales:"}</span>
-            <span className="font-bold text-[var(--text-primary)]">+1 (213) 946-1919</span>
-          </a>
         </div>
 
         {/* Footer Security Badge */}
