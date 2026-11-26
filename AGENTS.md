@@ -35,3 +35,22 @@ separación que sostiene toda la plataforma. Verificación rápida tras cada des
 curl -sD - -o /dev/null https://app.escal-ai.com | grep -o "connect-src[^;]*"   # solo el motor de producción
 curl -sD - -o /dev/null https://demo.escal-ai.com | grep -o "connect-src[^;]*"  # solo demo-api
 ```
+
+## Tokens semánticos vs. clases de paleta cruda
+
+El portal mezcla tokens (`text-[var(--text-primary)]`) con clases de la paleta de Tailwind (`text-emerald-600`).
+Los tokens son lo que hace funcionar claro/oscuro; las clases crudas son las que rompieron el contraste.
+
+`npm run tokens:check` (incluido en `npm run check`) **congela el conjunto actual** y falla si aparece una clase de
+paleta nueva. No reescribe nada: migrar un archivo significa quitar sus entradas con `npm run tokens:update`, así que
+el trinquete solo gira en un sentido.
+
+Estado: **245 clases en 8 archivos** pendientes de migrar. El resto del camino es visual, no mecánico:
+
+1. Elegir un archivo (los más cargados: `KdsBoard` 88, `OnboardingWizardModal` 65, `StripePrepayPanel` 62).
+2. Añadir el token que falte en `globals.css` (superficie, texto y borde para cada estado: éxito, error, aviso).
+3. Reemplazar clases y **verificar contraste en Chrome real** con la skill `auditar-contraste-wcag-chrome`, en modo
+   claro y oscuro — un diff no muestra si el texto dejó de leerse.
+4. `npm run tokens:update` para bajar el baseline.
+
+Nunca al revés: si una clase nueva "hace falta", se define como token; no se añade al baseline.

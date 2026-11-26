@@ -7,7 +7,10 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "e2e": "playwright test"
+    "e2e": "playwright test",
+    "tokens:check": "node scripts/check-design-tokens.mjs",
+    "tokens:update": "node scripts/check-design-tokens.mjs --update",
+    "check": "npm run tokens:check && tsc --noEmit && npm run lint"
   },
   "dependencies": {
     "lucide-react": "^1.78.0",
